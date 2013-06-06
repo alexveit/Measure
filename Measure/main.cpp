@@ -5,6 +5,8 @@ class MeasureWin
 #define FRAME_WIN_CLASS		"FRAME_WIN_CLASS"
 #define CONTROLS_WIN_CLASS	"CONTROLS_WIN_CLASS"
 
+	
+
 	HINSTANCE _hInstance;
 
 	HWND _frame_wnd;
@@ -14,6 +16,8 @@ class MeasureWin
 	HWND _width_inch_edit;
 	HWND _length_feet_edit;
 	HWND _length_inch_edit;
+
+	HWND _add_button;
 
 	static LRESULT CALLBACK WndProcFrame (HWND frame_wnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
@@ -78,14 +82,14 @@ class MeasureWin
 			mw->resize_control_window();
 			return 0;
 
-		/*case WM_COMMAND:
+		case WM_COMMAND:
 			switch(HIWORD(wParam))
 			{
-			case EN_CHANGE:
-				mw->process_key_board(lParam);
+			case BN_CLICKED:
+				mw->process_button_click(lParam);
 				break;
 			}
-			break;*/
+			break;
 		}
 
 		return DefWindowProc(control_wnd, message, wParam, lParam);
@@ -101,44 +105,55 @@ class MeasureWin
 	void create_controls(HWND control_wnd)
 	{
 		CreateWindow ("BUTTON", "Input",
-			WS_CHILD | WS_VISIBLE | BS_GROUPBOX,10, 10, 300, 175,
+			WS_CHILD | WS_VISIBLE | BS_GROUPBOX,10, 10, 260, 175,
 			control_wnd, NULL, _hInstance, NULL);
 
 		_width_feet_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
-                      WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-                      17, 30, 30, 25,control_wnd,NULL, _hInstance, NULL);
+                      WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT | WS_TABSTOP,
+                      17, 30, 35, 25,control_wnd,NULL, _hInstance, NULL);
 
 		CreateWindow("STATIC", "'",WS_VISIBLE | WS_CHILD,
-                      49, 30, 5, 25,control_wnd,NULL, _hInstance, NULL);
+                      54, 30, 5, 25,control_wnd,NULL, _hInstance, NULL);
 
 		_width_inch_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
-                      WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-                      56, 30, 30, 25,control_wnd,NULL, _hInstance, NULL);
+                      WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT | WS_TABSTOP,
+                      61, 30, 30, 25,control_wnd,NULL, _hInstance, NULL);
 
 		CreateWindow("STATIC", "\"   X",WS_VISIBLE | WS_CHILD,
-                      88, 30, 30, 25,control_wnd,NULL, _hInstance, NULL);
+                      93, 30, 30, 25,control_wnd,NULL, _hInstance, NULL);
 
 		int buff = 110;
 
 		_length_feet_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
-                      WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-                      17+buff, 30, 30, 25,control_wnd,NULL, _hInstance, NULL);
+                      WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT | WS_TABSTOP,
+                      17+buff, 30, 35, 25,control_wnd,NULL, _hInstance, NULL);
 
 		CreateWindow("STATIC", "'",WS_VISIBLE | WS_CHILD,
-                      49+buff, 30, 5, 25,control_wnd,NULL, _hInstance, NULL);
+                      54+buff, 30, 5, 25,control_wnd,NULL, _hInstance, NULL);
 
 		_length_inch_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
-                      WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
-                      56+buff, 30, 30, 25,control_wnd,NULL, _hInstance, NULL);
+                      WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT | WS_TABSTOP,
+                      61+buff, 30, 30, 25,control_wnd,NULL, _hInstance, NULL);
 
 		CreateWindow("STATIC", "\"",WS_VISIBLE | WS_CHILD,
-                      88+buff, 30, 8, 25,control_wnd,NULL, _hInstance, NULL);	
+                      93+buff, 30, 8, 25,control_wnd,NULL, _hInstance, NULL);
+
+		_add_button = CreateWindow("BUTTON", "Add",WS_VISIBLE | WS_CHILD | WS_TABSTOP,
+                      105+buff, 30, 50, 25,control_wnd,NULL, _hInstance, NULL);	
 	}
 
 	void get_rects(RECT *frame_rect, RECT *gl_rect, RECT *control_rect)
 	{
 		if(control_rect != NULL)	GetClientRect(_control_wnd,control_rect);
 		if(frame_rect != NULL)		GetClientRect(_frame_wnd,frame_rect);
+	}
+	
+	void process_button_click(LPARAM lParam)
+	{
+		if((HWND)lParam == _add_button)
+		{
+			validate_input();
+		}
 	}
 
 	void reg_win_class()
@@ -157,8 +172,8 @@ class MeasureWin
 
 		wc.style = CS_CLASSDC;
 		wc.lpfnWndProc = WndProcControls;
-		//wc.hbrBackground = (HBRUSH) COLOR_CAPTIONTEXT;
-		wc.hbrBackground = (HBRUSH) COLOR_WINDOW;
+		wc.hbrBackground = (HBRUSH) COLOR_CAPTIONTEXT;
+		//wc.hbrBackground = (HBRUSH) COLOR_WINDOW;
 		wc.lpszClassName = CONTROLS_WIN_CLASS;
 		RegisterClass (&wc);
 
@@ -174,6 +189,11 @@ class MeasureWin
 	void size_frame_window()
 	{
 		SendMessage(_control_wnd,WM_SIZE,(WPARAM)NULL,(WPARAM)NULL);
+	}
+
+	void validate_input()
+	{
+
 	}
 
 public:
@@ -198,8 +218,12 @@ public:
 
 		while(GetMessage(&msg, NULL, 0, 0) > 0)
 		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
+			//this is for tab key to work
+			if(!IsDialogMessage(_control_wnd,&msg))
+			{
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+			}
 		}
 
 		return (int)msg.message;
