@@ -6,8 +6,14 @@ class MeasureWin
 #define CONTROLS_WIN_CLASS	"CONTROLS_WIN_CLASS"
 
 	HINSTANCE _hInstance;
+
 	HWND _frame_wnd;
 	HWND _control_wnd;
+
+	HWND _width_feet_edit;
+	HWND _width_inch_edit;
+	HWND _length_feet_edit;
+	HWND _length_inch_edit;
 
 	static LRESULT CALLBACK WndProcFrame (HWND frame_wnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
@@ -56,7 +62,7 @@ class MeasureWin
 			//(CREATESTRUCT*)lParam)->lpCreateParams contains a pointer to CubeInterface
 			mw = (MeasureWin*)((CREATESTRUCT*)lParam)->lpCreateParams;
 
-			//mw->create_controls(control_wnd);
+			mw->create_controls(control_wnd);
 
 			//Actual line that stores my class in the window's user data
 			SetWindowLongPtr(control_wnd,GWLP_USERDATA,(LONG_PTR)mw);
@@ -72,14 +78,14 @@ class MeasureWin
 			mw->resize_control_window();
 			return 0;
 
-		case WM_COMMAND:
+		/*case WM_COMMAND:
 			switch(HIWORD(wParam))
 			{
-			case BN_CLICKED:
-				//ci->process_button_click(lParam);
+			case EN_CHANGE:
+				mw->process_key_board(lParam);
 				break;
 			}
-			break;
+			break;*/
 		}
 
 		return DefWindowProc(control_wnd, message, wParam, lParam);
@@ -88,10 +94,47 @@ class MeasureWin
 	void create_child_windows(HWND frame_wnd)
 	{
 		_control_wnd = CreateWindow (CONTROLS_WIN_CLASS, NULL,
-			WS_CHILD | WS_VISIBLE,0, 0, 200, 200,
+			WS_CHILD | WS_VISIBLE,0, 0, 400, 200,
 			frame_wnd, NULL, _hInstance, this);
 	}
 	
+	void create_controls(HWND control_wnd)
+	{
+		CreateWindow ("BUTTON", "Input",
+			WS_CHILD | WS_VISIBLE | BS_GROUPBOX,10, 10, 300, 175,
+			control_wnd, NULL, _hInstance, NULL);
+
+		_width_feet_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
+                      WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
+                      17, 30, 30, 25,control_wnd,NULL, _hInstance, NULL);
+
+		CreateWindow("STATIC", "'",WS_VISIBLE | WS_CHILD,
+                      49, 30, 5, 25,control_wnd,NULL, _hInstance, NULL);
+
+		_width_inch_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
+                      WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
+                      56, 30, 30, 25,control_wnd,NULL, _hInstance, NULL);
+
+		CreateWindow("STATIC", "\"   X",WS_VISIBLE | WS_CHILD,
+                      88, 30, 30, 25,control_wnd,NULL, _hInstance, NULL);
+
+		int buff = 110;
+
+		_length_feet_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
+                      WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
+                      17+buff, 30, 30, 25,control_wnd,NULL, _hInstance, NULL);
+
+		CreateWindow("STATIC", "'",WS_VISIBLE | WS_CHILD,
+                      49+buff, 30, 5, 25,control_wnd,NULL, _hInstance, NULL);
+
+		_length_inch_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
+                      WS_VISIBLE | WS_CHILD | WS_BORDER | ES_LEFT,
+                      56+buff, 30, 30, 25,control_wnd,NULL, _hInstance, NULL);
+
+		CreateWindow("STATIC", "\"",WS_VISIBLE | WS_CHILD,
+                      88+buff, 30, 8, 25,control_wnd,NULL, _hInstance, NULL);	
+	}
+
 	void get_rects(RECT *frame_rect, RECT *gl_rect, RECT *control_rect)
 	{
 		if(control_rect != NULL)	GetClientRect(_control_wnd,control_rect);
@@ -114,7 +157,8 @@ class MeasureWin
 
 		wc.style = CS_CLASSDC;
 		wc.lpfnWndProc = WndProcControls;
-		wc.hbrBackground = (HBRUSH) COLOR_CAPTIONTEXT;
+		//wc.hbrBackground = (HBRUSH) COLOR_CAPTIONTEXT;
+		wc.hbrBackground = (HBRUSH) COLOR_WINDOW;
 		wc.lpszClassName = CONTROLS_WIN_CLASS;
 		RegisterClass (&wc);
 
@@ -145,10 +189,12 @@ public:
 		ZeroMemory(&msg, sizeof (msg));
 
 		_frame_wnd = CreateWindow (FRAME_WIN_CLASS, "Measure", 
-			WS_OVERLAPPEDWINDOW | WS_VISIBLE,0, 0, 800, 600,
+			WS_OVERLAPPEDWINDOW | WS_VISIBLE,0, 0, 1000, 600,
 			NULL, NULL, _hInstance, this);
 
 		size_frame_window();
+
+		SetFocus(_width_feet_edit);
 
 		while(GetMessage(&msg, NULL, 0, 0) > 0)
 		{
