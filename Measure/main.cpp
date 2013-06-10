@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <vector>
 #include <gl\glu.h>
+#include <algorithm>
 
 using namespace std;
 
@@ -22,9 +23,10 @@ class MeasureWin
 	struct Measurment
 	{
 		int _w_f, _w_i, _l_f, _l_i;
-		Measurment() : _w_f(0), _w_i(0), _l_f(0), _l_i(0) {}
+		float _x, _y;
+		Measurment() : _w_f(0), _w_i(0), _l_f(0), _l_i(0), _x(0.0f), _y(0.0f) {}
 		Measurment(int w_f,int w_i,int l_f,int l_i) : 
-			_w_f(w_f), _w_i(w_i), _l_f(l_f), _l_i(l_i) {}
+			_w_f(w_f), _w_i(w_i), _l_f(l_f), _l_i(l_i), _x(0.0f), _y(0.0f) {}
 		
 		void add_width(const Measurment &m)
 		{
@@ -43,10 +45,31 @@ class MeasureWin
 					good = true;
 			}
 		}
-
-		bool is_name_length(const Measurment &m)
+		
+		void draw()
 		{
-			return (_l_f == m._l_f) && (_l_i == m._l_i);
+			glColor3f(1.0f,1.0f,1.0f);
+			glBegin(GL_QUADS);
+				glVertex3f(_x, _y*-1, 0);
+				glVertex3f(width_fraction(), _y*-1, 0);
+				glVertex3f(width_fraction(), length_fraction()*-1, 0);
+				glVertex3f(_x, length_fraction()*-1, 0);
+			glEnd();
+
+			float buff = 0.1f;
+
+			glColor3f(0.0f,0.0f,1.0f);
+			glBegin(GL_QUADS);
+				glVertex3f(_x+buff, (_y*-1)-buff, 0);
+				glVertex3f(width_fraction()-buff, (_y*-1)-buff, 0);
+				glVertex3f(width_fraction()-buff, (length_fraction()*-1)+buff, 0);
+				glVertex3f(_x+buff, (length_fraction()*-1)+buff, 0);
+			glEnd();
+		}
+
+		float get_length_plus_y()
+		{
+			return _y + length_fraction();
 		}
 
 		void get_string(char *buff, size_t size)
@@ -75,6 +98,85 @@ class MeasureWin
 				str.append("%d\"");
 			sprintf_s(buff,size,str.c_str(),_w_f,_w_i,_l_f,_l_i);
 		}
+		
+		bool is_name_length(const Measurment &m)
+		{
+			return (_l_f == m._l_f) && (_l_i == m._l_i);
+		}
+
+		float length_fraction() const
+		{
+			float len = (float)_l_f;
+			switch(_l_i)
+			{
+			case 1: len += 0.07f; break;
+			case 2: len += 0.17f; break;
+			case 3: len += 0.25f; break;
+			case 4: len += 0.33f; break;
+			case 5: len += 0.42f; break;
+			case 6: len += 0.50f; break;
+			case 7: len += 0.58f; break;
+			case 8: len += 0.67f; break;
+			case 9: len += 0.75f; break;
+			case 10: len += 0.83f; break;
+			case 11: len += 0.92f; break;
+			}
+			return len;
+		}
+
+		bool less_or_equal_then(const Measurment &m) const
+		{
+			int mywidth = (_w_f*12) + _w_i;
+			int comparewidth = (m._w_f*12) + m._w_i;
+
+			return mywidth <= comparewidth;
+		}
+
+		void subtract_width(const Measurment &m)
+		{
+			int myinchwidth = (_w_f*12) + _w_i;
+			int compareinchwidth = (m._w_f*12) + m._w_i;
+
+			myinchwidth -= compareinchwidth;
+
+			_w_f = 0;
+
+			bool good = false;
+
+			while(!good)
+			{
+				if(myinchwidth > 11)
+				{
+					_w_f++;
+					myinchwidth -= 12;
+				}
+				else
+				{
+					_w_i = myinchwidth;
+					good = true;
+				}
+			}
+		}
+
+		float width_fraction() const
+		{
+			float wid = (float)_w_f;
+			switch(_w_i)
+			{
+			case 1: wid += 0.07f; break;
+			case 2: wid += 0.17f; break;
+			case 3: wid += 0.25f; break;
+			case 4: wid += 0.33f; break;
+			case 5: wid += 0.42f; break;
+			case 6: wid += 0.50f; break;
+			case 7: wid += 0.58f; break;
+			case 8: wid += 0.67f; break;
+			case 9: wid += 0.75f; break;
+			case 10: wid += 0.83f; break;
+			case 11: wid += 0.92f; break;
+			}
+			return wid;
+		}	
 	};
 
 	HINSTANCE _hInstance;
@@ -85,6 +187,8 @@ class MeasureWin
 
 	HDC _hDC;
 	HGLRC _hRC;
+
+	GLuint	_base;	
 
 	float z_dist;
 
@@ -101,6 +205,7 @@ class MeasureWin
 	vector<Measurment> _measurments;
 	vector<Measurment> _standard;
 	vector<Measurment> _needs;
+	vector<Measurment> _accounted;
 
 	static LRESULT CALLBACK WndProcFrame (HWND frame_wnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
@@ -214,6 +319,78 @@ class MeasureWin
 
 		return DefWindowProc(gl_wnd, message, wParam, lParam);
 	}
+	
+	void build_font()								// Build Our Bitmap Font
+	{
+		HFONT	font;										// Windows Font ID
+		HFONT	oldfont;									// Used For Good House Keeping
+
+		_base = glGenLists(96);								// Storage For 96 Characters
+
+		font = CreateFont(	-12,							// Height Of Font
+							0,								// Width Of Font
+							0,								// Angle Of Escapement
+							0,								// Orientation Angle
+							FW_NORMAL,						// Font Weight
+							FALSE,							// Italic
+							FALSE,							// Underline
+							FALSE,							// Strikeout
+							ANSI_CHARSET,					// Character Set Identifier
+							OUT_TT_PRECIS,					// Output Precision
+							CLIP_DEFAULT_PRECIS,			// Clipping Precision
+							ANTIALIASED_QUALITY,			// Output Quality
+							FF_DONTCARE|DEFAULT_PITCH,		// Family And Pitch
+							"Courier New");					// Font Name
+
+		oldfont = (HFONT)SelectObject(_hDC, font);           // Selects The Font We Want
+		wglUseFontBitmaps(_hDC, 32, 96, _base);				// Builds 96 Characters Starting At Character 32
+		SelectObject(_hDC, oldfont);							// Selects The Font We Want
+		DeleteObject(font);									// Delete The Font
+	}
+
+	void calculate_totals()
+	{
+		Measurment remaining;
+		remaining._w_f = 12;
+
+		vector<Measurment> ordered_needs(_needs);
+		_accounted.clear();
+
+		sort(ordered_needs.begin(), ordered_needs.end(),sort_function);
+
+		bool good = false;
+
+		while(!good)
+		{
+			for(unsigned i = 0; i < ordered_needs.size(); i++)
+			{
+				if(ordered_needs[i].less_or_equal_then(remaining))
+				{
+					ordered_needs[i]._x = remaining._x;
+					ordered_needs[i]._y = remaining._y;
+
+					remaining.subtract_width(ordered_needs[i]);
+
+					remaining._x = ordered_needs[i].width_fraction();
+
+					_accounted.push_back(ordered_needs[i]);
+
+					ordered_needs.erase(ordered_needs.begin()+i);
+
+					i--;
+				}
+			}
+
+			if(ordered_needs.size() > 0)
+			{
+				remaining._w_f = 12;
+				remaining._x = 0;
+				remaining._y = get_biggest_y_from_accounted();
+			}
+			else
+				good = true;
+		}
+	}
 
 	void clear_inputs()
 	{
@@ -324,6 +501,9 @@ class MeasureWin
 		_add_button = CreateWindow("BUTTON", "Add",WS_VISIBLE | WS_CHILD | WS_TABSTOP,
                       105+buff, 30, 50, 25,control_wnd,NULL, _hInstance, NULL);
 
+		CreateWindow("BUTTON", "Draw",WS_VISIBLE | WS_CHILD | WS_TABSTOP,
+                      180+buff, 25, 83, 35,control_wnd,NULL, _hInstance, NULL);
+
 		CreateWindow("STATIC", "Measurments",WS_VISIBLE | WS_CHILD,
                       10, 70, 95, 18,control_wnd,NULL, _hInstance, NULL);
 
@@ -363,19 +543,77 @@ class MeasureWin
 
 		glPushMatrix();
 
-		glTranslatef(0.0f,0.0f,z_dist);
+		glTranslatef(-6.0f,0.0f,z_dist);
 
+		char buff[20];
+
+		for(unsigned i = 0; i < _accounted.size(); i++)
+		{
+			_accounted[i].draw();
+
+			glPushMatrix();
+			//glTranslatef(-6.0f,0.0f,z_dist-1.0f);
+			glColor3f(1.0f,1.0f,1.0f);
+			_accounted[i].get_string(buff,20);
+			glRasterPos3f(_accounted[i]._x+0.3f, _accounted[i]._y-1.0f,0.01f);
+ 			gl_print(buff);
+			glPopMatrix();
+		}
+
+
+		/*
 		glBegin(GL_QUADS);
 			glVertex3f(-1.0f, 1.0f, 0.0f);
 			glVertex3f( 1.0f, 1.0f, 0.0f);
 			glVertex3f( 1.0f,-1.0f, 0.0f);
 			glVertex3f(-1.0f,-1.0f, 0.0f);
 		glEnd();
+		*/
 
 		glPopMatrix();
 	
 
 		SwapBuffers(_hDC);
+	}
+
+	float get_biggest_y_from_accounted()
+	{
+		float len = 0;
+		float temp = 0;
+
+		for(unsigned i = 0; i < _accounted.size(); i++)
+		{
+			temp = _accounted[i].get_length_plus_y();
+			if(temp > len)
+				len = temp;
+		}
+
+		return len;
+	}
+
+	void get_ordered_needs(vector<Measurment> *ordered_needs)
+	{
+		*ordered_needs = vector<Measurment>(_needs);
+
+		sort(ordered_needs->begin(), ordered_needs->end(),sort_function);
+	}
+	
+	void gl_print(const char *fmt, ...)					// Custom GL "Print" Routine
+	{
+		char		text[256];								// Holds Our String
+		va_list		ap;										// Pointer To List Of Arguments
+
+		if (fmt == NULL)									// If There's No Text
+			return;											// Do Nothing
+
+		va_start(ap, fmt);									// Parses The String For Variables
+			vsprintf_s(text, fmt, ap);						// And Converts Symbols To Actual Numbers
+		va_end(ap);											// Results Are Stored In Text
+
+		glPushAttrib(GL_LIST_BIT);							// Pushes The Display List Bits
+		glListBase(_base - 32);								// Sets The Base Character to 32
+		glCallLists(strlen(text), GL_UNSIGNED_BYTE, text);	// Draws The Display List Text
+		glPopAttrib();										// Pops The Display List Bits
 	}
 
 	void init_gl()							// All Setup For OpenGL Goes Here
@@ -386,6 +624,51 @@ class MeasureWin
 		glEnable(GL_DEPTH_TEST);							// Enables Depth Testing
 		glDepthFunc(GL_LEQUAL);								// The Type Of Depth Testing To Do
 		glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);	// Really Nice Perspective Calculations
+
+		build_font();
+	}
+
+	void kill_font()									// Delete The Font List
+	{
+		glDeleteLists(_base, 96);					// Delete All 96 Characters
+	}
+
+	void kill_gl_window()								// Properly Kill The Window
+	{
+
+		if (_hRC)											// Do We Have A Rendering Context?
+		{
+			if (!wglMakeCurrent(NULL,NULL))					// Are We Able To Release The DC And RC Contexts?
+			{
+				MessageBox(NULL,"Release Of DC And RC Failed.","SHUTDOWN ERROR",MB_OK | MB_ICONINFORMATION);
+			}
+
+			if (!wglDeleteContext(_hRC))						// Are We Able To Delete The RC?
+			{
+				MessageBox(NULL,"Release Rendering Context Failed.","SHUTDOWN ERROR",MB_OK | MB_ICONINFORMATION);
+			}
+			_hRC=NULL;										// Set RC To NULL
+		}
+
+		if (_hDC && !ReleaseDC(_gl_wnd,_hDC))					// Are We Able To Release The DC
+		{
+			MessageBox(NULL,"Release Device Context Failed.","SHUTDOWN ERROR",MB_OK | MB_ICONINFORMATION);
+			_hDC=NULL;										// Set DC To NULL
+		}
+
+		if (_gl_wnd && !DestroyWindow(_gl_wnd))					// Are We Able To Destroy The Window?
+		{
+			MessageBox(NULL,"Could Not Release hWnd.","SHUTDOWN ERROR",MB_OK | MB_ICONINFORMATION);
+			_gl_wnd=NULL;										// Set hWnd To NULL
+		}
+
+		if (!UnregisterClass(GL_WIN_CLASS,_hInstance))			// Are We Able To Unregister Class
+		{
+			MessageBox(NULL,"Could Not Unregister Class.","SHUTDOWN ERROR",MB_OK | MB_ICONINFORMATION);
+			_hInstance=NULL;									// Set hInstance To NULL
+		}
+
+		kill_font();
 	}
 
 	void process_button_click(LPARAM lParam)
@@ -400,6 +683,7 @@ class MeasureWin
 				consolidate_needs();
 				consolidate_standards();
 				update_display();
+				calculate_totals();
 				SetFocus(_width_feet_edit);
 			}
 		}
@@ -476,7 +760,7 @@ class MeasureWin
 		glLoadIdentity();									// Reset The Projection Matrix
 
 		// Calculate The Aspect Ratio Of The Window
-		gluPerspective(45.0f,(GLfloat)width/(GLfloat)height,0.1f,100.0f);
+		gluPerspective(45.0f,(GLfloat)width/(GLfloat)height,0.1f,500.0f);
 
 		glMatrixMode(GL_MODELVIEW);							// Select The Modelview Matrix
 		glLoadIdentity();									// Reset The Modelview Matrix
@@ -551,6 +835,11 @@ class MeasureWin
 	{
 		SendMessage(_control_wnd,WM_SIZE,(WPARAM)NULL,(WPARAM)NULL);
 		SendMessage(_gl_wnd,WM_SIZE,(WPARAM)NULL,(WPARAM)NULL);
+	}
+
+	static bool sort_function(const Measurment &m1, const Measurment &m2)
+	{
+		return m1.length_fraction() > m2.length_fraction();
 	}
 
 	void split_needs()
@@ -707,7 +996,7 @@ public:
 
 	MeasureWin(HINSTANCE hInstance) : _hInstance(hInstance)
 	{
-		z_dist = -10.0f;
+		z_dist = -50.0f;
 		reg_win_class();
 	}
 
@@ -734,6 +1023,8 @@ public:
 			}
 			draw_gl_scene();
 		}
+
+		kill_gl_window();
 
 		return (int)msg.message;
 	}
