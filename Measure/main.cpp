@@ -48,12 +48,14 @@ class MeasureWin
 		
 		void draw()
 		{
+			float w_fraction = width_fraction();
+			float l_fraction = length_fraction();
 			glColor3f(1.0f,1.0f,1.0f);
 			glBegin(GL_QUADS);
 				glVertex3f(_x, _y*-1, 0);
-				glVertex3f(width_fraction(), _y*-1, 0);
-				glVertex3f(width_fraction(), length_fraction()*-1, 0);
-				glVertex3f(_x, length_fraction()*-1, 0);
+				glVertex3f(w_fraction, _y*-1, 0);
+				glVertex3f(w_fraction, (l_fraction+_y)*-1, 0);
+				glVertex3f(_x, (l_fraction+_y)*-1, 0);
 			glEnd();
 
 			float buff = 0.1f;
@@ -61,9 +63,9 @@ class MeasureWin
 			glColor3f(0.0f,0.0f,1.0f);
 			glBegin(GL_QUADS);
 				glVertex3f(_x+buff, (_y*-1)-buff, 0);
-				glVertex3f(width_fraction()-buff, (_y*-1)-buff, 0);
-				glVertex3f(width_fraction()-buff, (length_fraction()*-1)+buff, 0);
-				glVertex3f(_x+buff, (length_fraction()*-1)+buff, 0);
+				glVertex3f(w_fraction-buff, (_y*-1)-buff, 0);
+				glVertex3f(w_fraction-buff, ((l_fraction+_y)*-1)+buff, 0);
+				glVertex3f(_x+buff, ((l_fraction+_y)*-1)+buff, 0);
 			glEnd();
 		}
 
@@ -552,10 +554,9 @@ class MeasureWin
 			_accounted[i].draw();
 
 			glPushMatrix();
-			//glTranslatef(-6.0f,0.0f,z_dist-1.0f);
 			glColor3f(1.0f,1.0f,1.0f);
 			_accounted[i].get_string(buff,20);
-			glRasterPos3f(_accounted[i]._x+0.3f, _accounted[i]._y-1.0f,0.01f);
+			glRasterPos3f(_accounted[i]._x+0.3f, (_accounted[i]._y*-1)-1.0f,0.01f);
  			gl_print(buff);
 			glPopMatrix();
 		}
