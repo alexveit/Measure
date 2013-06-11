@@ -203,6 +203,8 @@ class MeasureWin
 	WORD last_xPos;
 	WORD last_yPos;
 
+	int motion_part;
+
 	HWND _width_feet_edit;
 	HWND _width_inch_edit;
 	HWND _length_feet_edit;
@@ -355,6 +357,10 @@ class MeasureWin
 			return 0;
 		case WM_LBUTTONDOWN:
 			SetFocus(mw->_gl_wnd);
+			mw->gl_select(LOWORD(lParam),HIWORD(lParam),true);
+			break;
+		case WM_LBUTTONUP:
+			mw->motion_part = -1;
 			break;
 		case WM_RBUTTONDOWN:
 			SetFocus(mw->_gl_wnd);
@@ -755,8 +761,11 @@ class MeasureWin
 		glPopAttrib();										// Pops The Display List Bits
 	}
 
-	void gl_select(int x, int y)
+	void gl_select(int x, int y, bool leftclick)
 	{
+		if(_accounted.size() == 0)
+			return;
+
 		GLuint buff[256] = {0};
 		GLint hits, view[4];
 
@@ -805,7 +814,7 @@ class MeasureWin
  
 		//process hit
 		if(hits > 1)
-			process_hits(hits,buff);
+			process_hits(hits,buff,leftclick);
 		else
 		{
 			for(unsigned i = 0; i < _accounted.size(); i++)
@@ -927,7 +936,7 @@ class MeasureWin
 		SetActiveWindow(_width_feet_edit);
 	}
 	
-	void process_hits(GLint hits, GLuint buff[])
+	void process_hits(GLint hits, GLuint buff[], bool leftclick)
 	{
 		GLuint *ptr = (GLuint *) buff;
 		GLuint minZ = 0xffffffff;
@@ -948,7 +957,13 @@ class MeasureWin
 		for(unsigned i = 0; i < _accounted.size(); i++)
 		{
 			if(i == *ptrNames)
+			{
 				_accounted[i]._print_text = true;
+				if(leftclick)
+				{
+					motion_part = *ptrNames;
+				}
+			}
 			else
 				_accounted[i]._print_text = false;
 		}
@@ -998,7 +1013,27 @@ class MeasureWin
 			last_xPos = xPos;
 			last_yPos = yPos;
 		}
-		gl_select(xPos,yPos);
+		else if(wParam == MK_LBUTTON)
+		{
+			if(_accounted.size() > 0 && motion_part > -1)
+			{
+				float dist = get_motion_dist();
+
+				if(xPos < last_xPos)
+					_accounted[motion_part]._x -= dist;
+				else if(xPos > last_xPos)
+					_accounted[motion_part]._x += dist;
+
+				if(yPos < last_yPos)
+					_accounted[motion_part]._y -= dist;
+				else if(yPos > last_yPos)
+					_accounted[motion_part]._y += dist;
+
+				last_xPos = xPos;
+				last_yPos = yPos;
+			}
+		}
+		gl_select(xPos,yPos,false);
 	}
 
 	void process_wheel(WORD w)
@@ -1341,6 +1376,7 @@ public:
 	{
 		last_xPos = 0;
 		last_yPos = 0;
+		motion_part = -1;
 		_done_with_input = false;
 		set_default_dists();
 		reg_win_class();
