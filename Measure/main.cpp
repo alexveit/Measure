@@ -25,9 +25,10 @@ class MeasureWin
 	{
 		int _w_f, _w_i, _l_f, _l_i;
 		float _x, _y;
-		Measurment() : _w_f(0), _w_i(0), _l_f(0), _l_i(0), _x(0.0f), _y(0.0f) {}
+		bool _print_text;
+		Measurment() : _w_f(0), _w_i(0), _l_f(0), _l_i(0), _x(0.0f), _y(0.0f), _print_text(false) {}
 		Measurment(int w_f,int w_i,int l_f,int l_i) : 
-			_w_f(w_f), _w_i(w_i), _l_f(l_f), _l_i(l_i), _x(0.0f), _y(0.0f) {}
+			_w_f(w_f), _w_i(w_i), _l_f(l_f), _l_i(l_i), _x(0.0f), _y(0.0f), _print_text(false) {}
 		
 		void add_width(const Measurment &m)
 		{
@@ -47,26 +48,28 @@ class MeasureWin
 			}
 		}
 		
-		void draw()
+		void draw(int name)
 		{
 			float w_fraction = width_fraction();
 			float l_fraction = length_fraction();
-			glColor3f(0.0f,0.0f,1.0f);
-			glBegin(GL_QUADS);
-				glVertex3f(_x, _y*-1, 0);
-				glVertex3f(_x+w_fraction, _y*-1, 0);
-				glVertex3f(_x+w_fraction, (l_fraction+_y)*-1, 0);
-				glVertex3f(_x, (l_fraction+_y)*-1, 0);
-			glEnd();
+			glLoadName(name);
+			glPushMatrix();
+				glColor3f(0.0f,0.0f,1.0f);
+				glBegin(GL_QUADS);
+					glVertex3f(_x, _y*-1, 0);
+					glVertex3f(_x+w_fraction, _y*-1, 0);
+					glVertex3f(_x+w_fraction, (l_fraction+_y)*-1, 0);
+					glVertex3f(_x, (l_fraction+_y)*-1, 0);
+				glEnd();
 
-			glColor3f(0.0f,0.0f,0.0f);
-			glBegin(GL_LINE_LOOP);
-				glVertex3f(_x, _y*-1, 0);
-				glVertex3f(_x+w_fraction, _y*-1, 0);
-				glVertex3f(_x+w_fraction, (l_fraction+_y)*-1, 0);
-				glVertex3f(_x, (l_fraction+_y)*-1, 0);
-			glEnd();
-
+				glColor3f(0.0f,0.0f,0.0f);
+				glBegin(GL_LINE_LOOP);
+					glVertex3f(_x, _y*-1, 0);
+					glVertex3f(_x+w_fraction, _y*-1, 0);
+					glVertex3f(_x+w_fraction, (l_fraction+_y)*-1, 0);
+					glVertex3f(_x, (l_fraction+_y)*-1, 0);
+				glEnd();
+			glPopMatrix();
 		}
 
 		float get_length_plus_y()
@@ -377,11 +380,11 @@ class MeasureWin
 
 		_base = glGenLists(96);								// Storage For 96 Characters
 
-		font = CreateFont(	-12,							// Height Of Font
+		font = CreateFont(	-20,							// Height Of Font
 							0,								// Width Of Font
 							0,								// Angle Of Escapement
 							0,								// Orientation Angle
-							FW_NORMAL,						// Font Weight
+							FW_BOLD,						// Font Weight
 							FALSE,							// Italic
 							FALSE,							// Underline
 							FALSE,							// Strikeout
@@ -628,19 +631,20 @@ class MeasureWin
 		char buff[20];
 		for(unsigned i = 0; i < _accounted.size(); i++)
 		{
-			_accounted[i].draw();
+			_accounted[i].draw(i);
 
-			/*
-			//print dimentions
-			glPushMatrix();
-			glColor3f(1.0f,1.0f,1.0f);
-			_accounted[i].get_string(buff,20);
-			glRasterPos3f(_accounted[i]._x+0.3f, (_accounted[i]._y*-1)-1.0f,0.01f);
- 			gl_print(buff);
-			glPopMatrix();
-			*/
+			if(_accounted[i]._print_text)
+			{
+				//print dimentions
+				glPushMatrix();
+					glColor3f(0.0f,0.0f,0.0f);
+					_accounted[i].get_string(buff,20);
+					glRasterPos3f(_accounted[i]._x+0.3f, (_accounted[i]._y*-1)-1.0f,0.01f);
+ 					gl_print(buff);
+				glPopMatrix();
+			}
+			
 		}
-
 
 		glPopMatrix();
 
@@ -650,45 +654,54 @@ class MeasureWin
 	void draw_red_backgroud()
 	{
 		float y = get_biggest_y_from_accounted()*-1;
+		float myzdist = z_dist;
+		myzdist -= 0.1f;
 
-		glColor3f(1.0f,0.0f,0.0f);
-		glBegin(GL_QUADS);
-			glVertex3f(0, 0, 0);
-			glVertex3f(12, 0, 0);
-			glVertex3f(12, y, 0);
-			glVertex3f(0, y, 0);
-		glEnd();
+		glPushMatrix();
+			
 
-		float temp = y*-1;
-
-		float myvar = 0;
-
-		glColor3f(0.0f,0.0f,0.0f);
-
-		while(true)
-		{
-			glBegin(GL_LINES);
-				glVertex3f(0, myvar, 0);
-				glVertex3f(12, myvar, 0);
+			glTranslatef(0,0,-0.01f);
+			
+			glColor3f(1.0f,0.0f,0.0f);
+			glBegin(GL_QUADS);
+				glVertex3f(0, 0, 0);
+				glVertex3f(12, 0, 0);
+				glVertex3f(12, y, 0);
+				glVertex3f(0, y, 0);
 			glEnd();
-			temp -= 1;
-			myvar -= 1;
-			if(temp < 0)
-				break;
-		}
+
+			float temp = y*-1;
+
+			float myvar = 0;
+
+			glColor3f(0.0f,0.0f,0.0f);
+
+			while(true)
+			{
+				glBegin(GL_LINES);
+					glVertex3f(0, myvar, 0);
+					glVertex3f(12, myvar, 0);
+				glEnd();
+				temp -= 1;
+				myvar -= 1;
+				if(temp < 0)
+					break;
+			}
 
 
-		myvar = 0;
-		while(true)
-		{
-			glBegin(GL_LINES);
-				glVertex3f(myvar, 0, 0);
-				glVertex3f(myvar, y, 0);
-			glEnd();
-			myvar += 1;
-			if(myvar > 12)
-				break;
-		}
+			myvar = 0;
+			while(true)
+			{
+				glBegin(GL_LINES);
+					glVertex3f(myvar, 0, 0);
+					glVertex3f(myvar, y, 0);
+				glEnd();
+				myvar += 1;
+				if(myvar > 12)
+					break;
+			}
+
+		glPopMatrix();
 	}
 
 	float get_biggest_y_from_accounted()
@@ -740,6 +753,67 @@ class MeasureWin
 		glListBase(_base - 32);								// Sets The Base Character to 32
 		glCallLists(strlen(text), GL_UNSIGNED_BYTE, text);	// Draws The Display List Text
 		glPopAttrib();										// Pops The Display List Bits
+	}
+
+	void gl_select(int x, int y)
+	{
+		GLuint buff[256] = {0};
+		GLint hits, view[4];
+
+		RECT gl_rect;
+		GetClientRect(_gl_wnd,&gl_rect);
+
+		//This choose the buffer where store the values for the selection data
+		glSelectBuffer(256, buff);
+ 
+		//This retrieve info about the viewport
+		glGetIntegerv(GL_VIEWPORT, view);
+ 
+		//Switching in selecton mode
+		glRenderMode(GL_SELECT);
+ 
+		//Clearing the name's stack
+		//This stack contains all the info about the objects
+		glInitNames();
+ 
+		//Now fill the stack with one element (or glLoadName will generate an error)
+		glPushName(0);
+ 
+		//Now modify the vieving volume, restricting selection area around the cursor
+		glMatrixMode(GL_PROJECTION);
+		glPushMatrix();
+		glLoadIdentity();
+ 
+		//restrict the draw to an area around the cursor
+		gluPickMatrix(x, gl_rect.bottom-y, .1f, .1f, view);
+		gluPerspective(45.0f,(GLfloat)gl_rect.right/(GLfloat)gl_rect.bottom,0.1f,100.0f);
+ 
+		//Draw the objects onto the screen
+		glMatrixMode(GL_MODELVIEW);
+ 
+		//draw only the names in the stack, and fill the array
+		SwapBuffers(_hDC);
+		draw_gl_scene();
+ 
+		//Do you remeber? We do pushMatrix in PROJECTION mode
+		glMatrixMode(GL_PROJECTION);
+		glPopMatrix();
+ 
+		//get number of objects drawed in that area
+		//and return to render mode
+		hits = glRenderMode(GL_RENDER);
+ 
+		//process hit
+		if(hits > 1)
+			process_hits(hits,buff);
+		else
+		{
+			for(unsigned i = 0; i < _accounted.size(); i++)
+				_accounted[i]._print_text = false;
+		}
+
+
+		glMatrixMode(GL_MODELVIEW);
 	}
 
 	void init_gl()							// All Setup For OpenGL Goes Here
@@ -852,7 +926,34 @@ class MeasureWin
 		SetFocus(_width_feet_edit);
 		SetActiveWindow(_width_feet_edit);
 	}
+	
+	void process_hits(GLint hits, GLuint buff[])
+	{
+		GLuint *ptr = (GLuint *) buff;
+		GLuint minZ = 0xffffffff;
+		GLuint names,numberOfNames, *ptrNames = 0;
+		for (int i = 0; i < hits; i++)
+		{	
+			names = *ptr;
+			ptr++;
+			if (*ptr < minZ)
+			{
+				numberOfNames = names;
+				minZ = *ptr;
+				ptrNames = ptr+2;
+			}
+			ptr += names+2;
+		}
 
+		for(unsigned i = 0; i < _accounted.size(); i++)
+		{
+			if(i == *ptrNames)
+				_accounted[i]._print_text = true;
+			else
+				_accounted[i]._print_text = false;
+		}
+	}
+	
 	void process_input()
 	{
 		split_needs();
@@ -878,11 +979,10 @@ class MeasureWin
 
 	void process_mouse_motion(WPARAM wParam,LPARAM lParam)
 	{
+		WORD xPos = LOWORD(lParam); 
+		WORD yPos = HIWORD(lParam);
 		if(wParam == MK_RBUTTON)
 		{
-			WORD xPos = LOWORD(lParam); 
-			WORD yPos = HIWORD(lParam);
-
 			float dist = get_motion_dist();
 
 			if(xPos < last_xPos)
@@ -898,7 +998,7 @@ class MeasureWin
 			last_xPos = xPos;
 			last_yPos = yPos;
 		}
-		
+		gl_select(xPos,yPos);
 	}
 
 	void process_wheel(WORD w)
@@ -1252,7 +1352,7 @@ public:
 		ZeroMemory(&msg, sizeof (msg));
 
 		_frame_wnd = CreateWindow (FRAME_WIN_CLASS, "Measure", 
-			WS_OVERLAPPEDWINDOW | WS_VISIBLE,0, 0, 600, 600,
+			WS_OVERLAPPEDWINDOW | WS_VISIBLE,0, 0, 900, 600,
 			NULL, NULL, _hInstance, this);
 
 		size_frame_window();
