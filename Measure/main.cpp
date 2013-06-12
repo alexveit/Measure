@@ -292,7 +292,7 @@ class MeasureWin
 
 		case WM_SIZE:
 			mw->size_frame_window();
-			return 0;
+			break;
 		}
 
 		return DefWindowProc(frame_wnd, message, wParam, lParam);
@@ -323,7 +323,7 @@ class MeasureWin
 		{
 		case WM_SIZE:
 			mw->size_control_window();
-			return 0;
+			break;
 
 		case WM_ERASEBKGND:
 			return TRUE;
@@ -366,10 +366,7 @@ class MeasureWin
 		{
 		case WM_SIZE:
 			mw->size_lower_control_window();
-			return 0;
-
-		case WM_ERASEBKGND:
-			return TRUE;
+			break;
 
 		case WM_COMMAND:
 			switch(HIWORD(wParam))
@@ -409,10 +406,8 @@ class MeasureWin
 		{
 		case WM_SIZE:
 
-			return 0;
+			break;
 
-		case WM_ERASEBKGND:
-			return TRUE;
 
 		case WM_COMMAND:
 			switch(HIWORD(wParam))
@@ -452,9 +447,8 @@ class MeasureWin
 		{
 		case WM_SIZE:
 			mw->size_MeasurmentDisplay_window();
-			return 0;
-		case WM_ERASEBKGND:
-			return TRUE;
+			break;
+
 		}
 
 		return DefWindowProc(meas_wnd, message, wParam, lParam);
@@ -483,7 +477,7 @@ class MeasureWin
 		{
 		case WM_SIZE:
 			mw->size_gl_window();
-			return 0;
+			break;
 		case WM_LBUTTONDOWN:
 			SetFocus(mw->_gl_wnd);
 			mw->gl_select(LOWORD(lParam),HIWORD(lParam),true);
@@ -502,6 +496,10 @@ class MeasureWin
 			break;
 		case WM_KEYDOWN:
 			mw->process_keydown(wParam);
+			break;
+
+		case WM_PAINT:
+			mw->draw_gl_scene();
 			break;
 
 		case WM_ERASEBKGND:
