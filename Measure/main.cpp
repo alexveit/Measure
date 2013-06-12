@@ -20,6 +20,8 @@ class MeasureWin
 #define CONTROLS_WIN_CLASS				"CONTROLS_WIN_CLASS"
 #define GL_WIN_CLASS					"GL_WIN_CLASS"
 #define MEASURMENT_DIPLAY_WIN_CLASS		"MEASURMENT_DIPLAY_WIN_CLASS"
+#define TOP_INPUT_WIN_CLASS				"TOP_INPUT_WIN_CLASS"
+#define LOWER_CONTROL_WIN_CLASS			"LOWER_CONTROL_WIN_CLASS"
 
 	struct Measurment
 	{
@@ -190,6 +192,8 @@ class MeasureWin
 	HWND _control_wnd;
 	HWND _measure_display_wnd;
 	HWND _gl_wnd;
+	HWND _topInput_wnd;
+	HWND _lower_control_wnd;
 
 	HDC _hDC;
 	HGLRC _hRC;
@@ -298,6 +302,86 @@ class MeasureWin
 		}
 
 		return DefWindowProc(control_wnd, message, wParam, lParam);
+	}
+	
+	static LRESULT CALLBACK WndProcLowerControl (HWND low_wnd, UINT message, WPARAM wParam, LPARAM lParam)
+	{
+		MeasureWin *mw = NULL;
+
+		//set user data, in this case, a pointer to my CubeInterface class
+		if(message == WM_CREATE)
+		{
+			//lParam contains a pointer to a CREATESTRUCT
+			//(CREATESTRUCT*)lParam)->lpCreateParams contains a pointer to CubeInterface
+			mw = (MeasureWin*)((CREATESTRUCT*)lParam)->lpCreateParams;
+
+			mw->create_lower_control(low_wnd);
+
+			//Actual line that stores my class in the window's user data
+			SetWindowLongPtr(low_wnd,GWLP_USERDATA,(LONG_PTR)mw);
+			return 0;
+		}
+
+		//Retrieve my class
+		mw = (MeasureWin*)GetWindowLongPtr(low_wnd,GWLP_USERDATA);
+
+		switch (message)
+		{
+		case WM_SIZE:
+			//mw->resize_control_window();
+			return 0;
+
+		case WM_COMMAND:
+			switch(HIWORD(wParam))
+			{
+			case BN_CLICKED:
+				mw->process_button_click(lParam);
+				break;
+			}
+			break;
+		}
+
+		return DefWindowProc(low_wnd, message, wParam, lParam);
+	}
+	
+	static LRESULT CALLBACK WndProcTopInput (HWND top_wnd, UINT message, WPARAM wParam, LPARAM lParam)
+	{
+		MeasureWin *mw = NULL;
+
+		//set user data, in this case, a pointer to my CubeInterface class
+		if(message == WM_CREATE)
+		{
+			//lParam contains a pointer to a CREATESTRUCT
+			//(CREATESTRUCT*)lParam)->lpCreateParams contains a pointer to CubeInterface
+			mw = (MeasureWin*)((CREATESTRUCT*)lParam)->lpCreateParams;
+
+			mw->create_top_inputs(top_wnd);
+
+			//Actual line that stores my class in the window's user data
+			SetWindowLongPtr(top_wnd,GWLP_USERDATA,(LONG_PTR)mw);
+			return 0;
+		}
+
+		//Retrieve my class
+		mw = (MeasureWin*)GetWindowLongPtr(top_wnd,GWLP_USERDATA);
+
+		switch (message)
+		{
+		case WM_SIZE:
+			//mw->resize_MeasurmentDisplay_window();
+			return 0;
+
+		case WM_COMMAND:
+			switch(HIWORD(wParam))
+			{
+			case BN_CLICKED:
+				mw->process_button_click(lParam);
+				break;
+			}
+			break;
+		}
+
+		return DefWindowProc(top_wnd, message, wParam, lParam);
 	}
 
 	static LRESULT CALLBACK WndProcMeasurmentDisplay (HWND meas_wnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -535,60 +619,31 @@ class MeasureWin
 	
 	void create_controls(HWND control_wnd)
 	{
-		CreateWindow ("BUTTON", "Input",
-			WS_CHILD | WS_VISIBLE | BS_GROUPBOX,10, 10, 265, 55,
-			control_wnd, NULL, _hInstance, NULL);
 
-		_width_feet_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
-                      WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_LEFT | WS_TABSTOP,
-                      17, 30, 35, 25,control_wnd,NULL, _hInstance, NULL);
+		RECT c_rect;
+		GetClientRect(control_wnd,&c_rect);
 
-		CreateWindow("STATIC", "'",WS_VISIBLE | WS_CHILD,
-                      54, 30, 5, 25,control_wnd,NULL, _hInstance, NULL);
-
-		_width_inch_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
-                      WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_LEFT | WS_TABSTOP,
-                      61, 30, 30, 25,control_wnd,NULL, _hInstance, NULL);
-
-		CreateWindow("STATIC", "\"  X",WS_VISIBLE | WS_CHILD,
-                      93, 30, 30, 25,control_wnd,NULL, _hInstance, NULL);
-
-		int buff = 110;
-
-		_length_feet_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
-                      WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_LEFT | WS_TABSTOP,
-                      17+buff, 30, 35, 25,control_wnd,NULL, _hInstance, NULL);
-
-		CreateWindow("STATIC", "'",WS_VISIBLE | WS_CHILD,
-                      54+buff, 30, 5, 25,control_wnd,NULL, _hInstance, NULL);
-
-		_length_inch_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
-                      WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_LEFT | WS_TABSTOP,
-                      61+buff, 30, 30, 25,control_wnd,NULL, _hInstance, NULL);
-
-		CreateWindow("STATIC", "\"",WS_VISIBLE | WS_CHILD,
-                      93+buff, 30, 8, 25,control_wnd,NULL, _hInstance, NULL);
-
-		_add_button = CreateWindow("BUTTON", "Add",WS_VISIBLE | WS_CHILD | WS_TABSTOP,
-                      105+buff, 30, 50, 25,control_wnd,NULL, _hInstance, NULL);
-
-		_invert_button = CreateWindow("BUTTON", "Invert",WS_VISIBLE | WS_CHILD,
-                      180+buff, 25, 83, 35,control_wnd,NULL, _hInstance, NULL);
-
-		_measure_display_wnd = CreateWindow (MEASURMENT_DIPLAY_WIN_CLASS, NULL,
-			WS_CHILD | WS_VISIBLE,0, 400, 50, 50,
+		_topInput_wnd = CreateWindow (TOP_INPUT_WIN_CLASS, NULL,
+			WS_CHILD | WS_VISIBLE | WS_BORDER,0, 0, c_rect.right, 80,
 			control_wnd, NULL, _hInstance, this);
 
-		_clear_button = CreateWindow("BUTTON", "Clear",WS_VISIBLE | WS_CHILD,
-                      180+buff, 25, 83, 35,control_wnd,NULL, _hInstance, NULL);
+		_measure_display_wnd = CreateWindow (MEASURMENT_DIPLAY_WIN_CLASS, NULL,
+			WS_CHILD | WS_VISIBLE | WS_BORDER,0, 400, 50, 50,
+			control_wnd, NULL, _hInstance, this);
 
-		HFONT hFont=CreateFont(0,6,0,0,0,0,0,0,0,0,0,0,0,TEXT("Courier New"));
-		SendMessage(_measurements_edit,WM_SETFONT,(WPARAM)hFont,0);
-		SendMessage(_standard_edit,WM_SETFONT,(WPARAM)hFont,0);
-		SendMessage(_needs_edit,WM_SETFONT,(WPARAM)hFont,0);
+		_lower_control_wnd = CreateWindow (LOWER_CONTROL_WIN_CLASS, NULL,
+			WS_CHILD | WS_VISIBLE | WS_BORDER,0, 600, 200, 50,
+			control_wnd, NULL, _hInstance, this);
 
 	}
 	
+	void create_lower_control(HWND low_wnd)
+	{
+
+		_clear_button = CreateWindow("BUTTON", "Clear",WS_VISIBLE | WS_CHILD,
+			0, 0, 83, 35,low_wnd,NULL, _hInstance, NULL);
+	}
+
 	void create_MeasurmentDisplay(HWND meas_wnd)
 	{
 		CreateWindow("STATIC", "Measurments",WS_VISIBLE | WS_CHILD,
@@ -615,8 +670,57 @@ class MeasureWin
 					  WS_VSCROLL | ES_LEFT, 260, 20, 120, 265,
 					  meas_wnd,NULL, _hInstance, NULL);
 
-	}
+		HFONT hFont=CreateFont(0,6,0,0,0,0,0,0,0,0,0,0,0,TEXT("Courier New"));
+		SendMessage(_measurements_edit,WM_SETFONT,(WPARAM)hFont,0);
+		SendMessage(_standard_edit,WM_SETFONT,(WPARAM)hFont,0);
+		SendMessage(_needs_edit,WM_SETFONT,(WPARAM)hFont,0);
 
+	}
+	
+	void create_top_inputs(HWND top_wnd)
+	{
+
+		CreateWindow ("BUTTON", "Input",
+			WS_CHILD | WS_VISIBLE | BS_GROUPBOX,10, 10, 265, 55,
+			top_wnd, NULL, _hInstance, NULL);
+
+		_width_feet_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
+                      WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_LEFT | WS_TABSTOP,
+                      17, 30, 35, 25,top_wnd,NULL, _hInstance, NULL);
+
+		CreateWindow("STATIC", "'",WS_VISIBLE | WS_CHILD,
+                      54, 30, 5, 25,top_wnd,NULL, _hInstance, NULL);
+
+		_width_inch_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
+                      WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_LEFT | WS_TABSTOP,
+                      61, 30, 30, 25,top_wnd,NULL, _hInstance, NULL);
+
+		CreateWindow("STATIC", "\"  X",WS_VISIBLE | WS_CHILD,
+                      93, 30, 30, 25,top_wnd,NULL, _hInstance, NULL);
+
+		int buff = 110;
+
+		_length_feet_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
+                      WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_LEFT | WS_TABSTOP,
+                      17+buff, 30, 35, 25,top_wnd,NULL, _hInstance, NULL);
+
+		CreateWindow("STATIC", "'",WS_VISIBLE | WS_CHILD,
+                      54+buff, 30, 5, 25,top_wnd,NULL, _hInstance, NULL);
+
+		_length_inch_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
+                      WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_LEFT | WS_TABSTOP,
+                      61+buff, 30, 30, 25,top_wnd,NULL, _hInstance, NULL);
+
+		CreateWindow("STATIC", "\"",WS_VISIBLE | WS_CHILD,
+                      93+buff, 30, 8, 25,top_wnd,NULL, _hInstance, NULL);
+
+		_add_button = CreateWindow("BUTTON", "Add",WS_VISIBLE | WS_CHILD | WS_TABSTOP,
+                      105+buff, 30, 50, 25,top_wnd,NULL, _hInstance, NULL);
+
+		_invert_button = CreateWindow("BUTTON", "Invert",WS_VISIBLE | WS_CHILD,
+                      180+buff, 25, 83, 35,top_wnd,NULL, _hInstance, NULL);
+	}
+	
 	void draw_gl_scene()
 	{
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	// Clear Screen And Depth Buffer
@@ -637,7 +741,7 @@ class MeasureWin
 		char buff[20];
 		for(unsigned i = 0; i < _accounted.size(); i++)
 		{
-			_accounted[i].draw(i);
+			_accounted[i].draw(i+1);
 
 			if(_accounted[i]._print_text)
 			{
@@ -813,7 +917,7 @@ class MeasureWin
 		hits = glRenderMode(GL_RENDER);
  
 		//process hit
-		if(hits > 1)
+		if(hits > 0)
 			process_hits(hits,buff,leftclick);
 		else
 		{
@@ -956,7 +1060,7 @@ class MeasureWin
 
 		for(unsigned i = 0; i < _accounted.size(); i++)
 		{
-			if(i == *ptrNames)
+			if(i+1 == *ptrNames)
 			{
 				_accounted[i]._print_text = true;
 				if(leftclick)
@@ -1020,14 +1124,14 @@ class MeasureWin
 				float dist = get_motion_dist();
 
 				if(xPos < last_xPos)
-					_accounted[motion_part]._x -= dist;
+					_accounted[motion_part-1]._x -= dist;
 				else if(xPos > last_xPos)
-					_accounted[motion_part]._x += dist;
+					_accounted[motion_part-1]._x += dist;
 
 				if(yPos < last_yPos)
-					_accounted[motion_part]._y -= dist;
+					_accounted[motion_part-1]._y -= dist;
 				else if(yPos > last_yPos)
-					_accounted[motion_part]._y += dist;
+					_accounted[motion_part-1]._y += dist;
 
 				last_xPos = xPos;
 				last_yPos = yPos;
@@ -1073,6 +1177,14 @@ class MeasureWin
 		wc.lpszClassName = CONTROLS_WIN_CLASS;
 		RegisterClass (&wc);
 
+		wc.lpfnWndProc = WndProcTopInput;
+		wc.lpszClassName = TOP_INPUT_WIN_CLASS;
+		RegisterClass (&wc);
+
+		wc.lpfnWndProc = WndProcLowerControl;
+		wc.lpszClassName = LOWER_CONTROL_WIN_CLASS;
+		RegisterClass (&wc);
+
 		wc.lpfnWndProc = WndProcMeasurmentDisplay;
 		wc.lpszClassName = MEASURMENT_DIPLAY_WIN_CLASS;
 		RegisterClass (&wc);
@@ -1081,22 +1193,25 @@ class MeasureWin
 	
 	void resize_control_window()
 	{
-		RECT c_frame_rect, c_control_rect, temp;
-		
+		RECT c_frame_rect, c_control_rect;
+		RECT top_input, lower_control;
+		int bottom = 0;
+		GetClientRect(_topInput_wnd,&top_input);
 		GetClientRect(_frame_wnd,&c_frame_rect);
 		GetClientRect(_control_wnd,&c_control_rect);
-		GetWindowRect(_width_feet_edit,&temp);
-
-		MoveWindow(_control_wnd,0,0,c_control_rect.right,c_frame_rect.bottom,TRUE);
-
-		int bottom = c_frame_rect.bottom - 130;
-
-		MoveWindow(_measure_display_wnd,0,70,c_control_rect.right,bottom,TRUE);
-		GetWindowRect(_measure_display_wnd,&temp);
 		
-		bottom = temp.bottom - 20;
+		MoveWindow(_control_wnd,0,0,c_control_rect.right,c_frame_rect.bottom,TRUE); //good so far
 
-		MoveWindow(_clear_button,290, bottom, 83, 35,TRUE);
+
+		GetClientRect(_lower_control_wnd,&lower_control);
+		bottom = c_frame_rect.bottom - 300;
+		MoveWindow(_measure_display_wnd,0,top_input.bottom,c_control_rect.right,bottom,TRUE);	
+
+		RECT mdisplay;
+		GetClientRect(_measure_display_wnd,&mdisplay);
+		bottom = c_frame_rect.bottom;
+		int top = mdisplay.bottom + top_input.bottom + 2;
+		MoveWindow(_lower_control_wnd,0,top,c_control_rect.right,122,TRUE);
 
 	}
 	
@@ -1398,7 +1513,7 @@ public:
 		while(GetMessage(&msg, NULL, 0, 0) > 0)
 		{
 			//this is for tab key to work
-			if(!IsDialogMessage(_control_wnd,&msg))
+			if(!IsDialogMessage(_topInput_wnd,&msg))
 			{
 				TranslateMessage(&msg);
 				DispatchMessage(&msg);
