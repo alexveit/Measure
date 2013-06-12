@@ -27,10 +27,10 @@ class MeasureWin
 	{
 		int _w_f, _w_i, _l_f, _l_i;
 		float _x, _y;
-		bool _print_text;
-		Measurment() : _w_f(0), _w_i(0), _l_f(0), _l_i(0), _x(0.0f), _y(0.0f), _print_text(false) {}
+		bool _print_text, _is_clicked;
+		Measurment() : _w_f(0), _w_i(0), _l_f(0), _l_i(0), _x(0.0f), _y(0.0f), _print_text(false),_is_clicked(false) {}
 		Measurment(int w_f,int w_i,int l_f,int l_i) : 
-			_w_f(w_f), _w_i(w_i), _l_f(l_f), _l_i(l_i), _x(0.0f), _y(0.0f), _print_text(false) {}
+			_w_f(w_f), _w_i(w_i), _l_f(l_f), _l_i(l_i), _x(0.0f), _y(0.0f), _print_text(false),_is_clicked(false) {}
 		
 		void add_width(const Measurment &m)
 		{
@@ -56,6 +56,12 @@ class MeasureWin
 			float l_fraction = length_fraction();
 			glLoadName(name);
 			glPushMatrix();
+
+				if(_is_clicked)
+					glTranslatef(0,0,.001f);
+
+
+
 				glColor3f(0.0f,0.0f,1.0f);
 				glBegin(GL_QUADS);
 					glVertex3f(_x, _y*-1, 0);
@@ -106,7 +112,7 @@ class MeasureWin
 			sprintf_s(buff,size,str.c_str(),_w_f,_w_i,_l_f,_l_i);
 		}
 		
-		bool is_name_length(const Measurment &m)
+		bool is_same_length(const Measurment &m)
 		{
 			return (_l_f == m._l_f) && (_l_i == m._l_i);
 		}
@@ -228,6 +234,12 @@ class MeasureWin
 
 	bool _done_with_input;
 
+	
+	static bool sort_function(const Measurment &m1, const Measurment &m2)
+	{
+		return m1.length_fraction() > m2.length_fraction();
+	}
+
 	static LRESULT CALLBACK WndProcFrame (HWND frame_wnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		MeasureWin *mw = NULL;
@@ -288,7 +300,7 @@ class MeasureWin
 		switch (message)
 		{
 		case WM_SIZE:
-			mw->resize_control_window();
+			mw->size_control_window();
 			return 0;
 
 		case WM_COMMAND:
@@ -328,7 +340,7 @@ class MeasureWin
 		switch (message)
 		{
 		case WM_SIZE:
-			//mw->resize_control_window();
+			mw->size_lower_control_window();
 			return 0;
 
 		case WM_COMMAND:
@@ -368,7 +380,7 @@ class MeasureWin
 		switch (message)
 		{
 		case WM_SIZE:
-			//mw->resize_MeasurmentDisplay_window();
+
 			return 0;
 
 		case WM_COMMAND:
@@ -408,7 +420,7 @@ class MeasureWin
 		switch (message)
 		{
 		case WM_SIZE:
-			mw->resize_MeasurmentDisplay_window();
+			mw->size_MeasurmentDisplay_window();
 			return 0;
 		}
 
@@ -437,14 +449,14 @@ class MeasureWin
 		switch (message)
 		{
 		case WM_SIZE:
-			mw->resize_gl_window();
+			mw->size_gl_window();
 			return 0;
 		case WM_LBUTTONDOWN:
 			SetFocus(mw->_gl_wnd);
 			mw->gl_select(LOWORD(lParam),HIWORD(lParam),true);
 			break;
 		case WM_LBUTTONUP:
-			mw->motion_part = -1;
+			mw->process_left_mouse_up();
 			break;
 		case WM_RBUTTONDOWN:
 			SetFocus(mw->_gl_wnd);
@@ -561,7 +573,7 @@ class MeasureWin
 		{
 			for (unsigned j = i+1; j < _needs.size(); j++)
 			{
-				if(_needs[i].is_name_length(_needs[j]))
+				if(_needs[i].is_same_length(_needs[j]))
 				{
 					_needs[i].add_width(_needs[j]);
 					_needs.erase(_needs.begin()+j);
@@ -770,7 +782,7 @@ class MeasureWin
 		glPushMatrix();
 			
 
-			glTranslatef(0,0,-0.01f);
+			glTranslatef(0,0,-0.001f);
 			
 			glColor3f(1.0f,0.0f,0.0f);
 			glBegin(GL_QUADS);
@@ -840,13 +852,6 @@ class MeasureWin
 
 	}
 
-	void get_ordered_needs(vector<Measurment> *ordered_needs)
-	{
-		*ordered_needs = vector<Measurment>(_needs);
-
-		sort(ordered_needs->begin(), ordered_needs->end(),sort_function);
-	}
-	
 	void gl_print(const char *fmt, ...)					// Custom GL "Print" Routine
 	{
 		char		text[256];								// Holds Our String
@@ -1065,11 +1070,18 @@ class MeasureWin
 				_accounted[i]._print_text = true;
 				if(leftclick)
 				{
+					_accounted[i]._is_clicked = true;
 					motion_part = *ptrNames;
 				}
 			}
 			else
+			{
+				if(leftclick)
+				{
+					_accounted[i]._is_clicked = false;
+				}
 				_accounted[i]._print_text = false;
+			}
 		}
 	}
 	
@@ -1094,6 +1106,13 @@ class MeasureWin
 		case VK_RIGHT: x_dist += 1.0f; break;
 		}
 
+	}
+
+	void process_left_mouse_up()
+	{
+		/*if(motion_part != -1)
+			_accounted[motion_part-1]._is_clicked = false;*/
+		motion_part = -1;
 	}
 
 	void process_mouse_motion(WPARAM wParam,LPARAM lParam)
@@ -1191,30 +1210,6 @@ class MeasureWin
 	
 	}
 	
-	void resize_control_window()
-	{
-		RECT c_frame_rect, c_control_rect;
-		RECT top_input, lower_control;
-		int bottom = 0;
-		GetClientRect(_topInput_wnd,&top_input);
-		GetClientRect(_frame_wnd,&c_frame_rect);
-		GetClientRect(_control_wnd,&c_control_rect);
-		
-		MoveWindow(_control_wnd,0,0,c_control_rect.right,c_frame_rect.bottom,TRUE); //good so far
-
-
-		GetClientRect(_lower_control_wnd,&lower_control);
-		bottom = c_frame_rect.bottom - 300;
-		MoveWindow(_measure_display_wnd,0,top_input.bottom,c_control_rect.right,bottom,TRUE);	
-
-		RECT mdisplay;
-		GetClientRect(_measure_display_wnd,&mdisplay);
-		bottom = c_frame_rect.bottom;
-		int top = mdisplay.bottom + top_input.bottom + 2;
-		MoveWindow(_lower_control_wnd,0,top,c_control_rect.right,122,TRUE);
-
-	}
-	
 	void resize_gl_scene(RECT frame_rect, RECT control_rect)		// Resize And Initialize The GL Window
 	{
 		GLsizei width = frame_rect.right-control_rect.right;
@@ -1230,32 +1225,6 @@ class MeasureWin
 
 		glMatrixMode(GL_MODELVIEW);							// Select The Modelview Matrix
 		glLoadIdentity();									// Reset The Modelview Matrix
-	}
-
-	void resize_gl_window()
-	{
-		RECT c_frame_rect, c_control_rect, c_gl_rect;
-		
-		GetClientRect(_frame_wnd,&c_frame_rect);
-		GetClientRect(_control_wnd,&c_control_rect);
-		GetClientRect(_gl_wnd,&c_gl_rect);
-
-		MoveWindow(_gl_wnd,c_control_rect.right,c_gl_rect.top,c_frame_rect.right-c_control_rect.right,c_frame_rect.bottom,TRUE);
-		resize_gl_scene(c_frame_rect,c_control_rect);
-	}
-
-	void resize_MeasurmentDisplay_window()
-	{
-		RECT measure_display_rect;
-		
-		GetClientRect(_measure_display_wnd,&measure_display_rect);
-
-		int bottom = measure_display_rect.bottom - 25;
-
-		MoveWindow(_measurements_edit,10,20,120,bottom,TRUE);
-		MoveWindow(_standard_edit,135, 20, 120,bottom,TRUE);
-		MoveWindow(_needs_edit,260, 20, 120,bottom,TRUE);
-
 	}
 
 	void retrieve_measurment()
@@ -1318,15 +1287,72 @@ class MeasureWin
 		init_gl();
 	}
 
+	void size_control_window()
+	{
+		RECT c_frame_rect, c_control_rect;
+		GetClientRect(_frame_wnd,&c_frame_rect);
+		GetClientRect(_control_wnd,&c_control_rect);
+		
+		MoveWindow(_control_wnd,0,0,c_control_rect.right,c_frame_rect.bottom,TRUE); //good so far
+
+		SendMessage(_measure_display_wnd,WM_SIZE,(WPARAM)NULL,(WPARAM)NULL);
+		SendMessage(_lower_control_wnd,WM_SIZE,(WPARAM)NULL,(WPARAM)NULL);
+
+	}
+	
 	void size_frame_window()
 	{
 		SendMessage(_control_wnd,WM_SIZE,(WPARAM)NULL,(WPARAM)NULL);
 		SendMessage(_gl_wnd,WM_SIZE,(WPARAM)NULL,(WPARAM)NULL);
 	}
-
-	static bool sort_function(const Measurment &m1, const Measurment &m2)
+	
+	void size_gl_window()
 	{
-		return m1.length_fraction() > m2.length_fraction();
+		RECT c_frame_rect, c_control_rect, c_gl_rect;
+		
+		GetClientRect(_frame_wnd,&c_frame_rect);
+		GetClientRect(_control_wnd,&c_control_rect);
+		GetClientRect(_gl_wnd,&c_gl_rect);
+
+		MoveWindow(_gl_wnd,c_control_rect.right,c_gl_rect.top,c_frame_rect.right-c_control_rect.right,c_frame_rect.bottom,TRUE);
+		resize_gl_scene(c_frame_rect,c_control_rect);
+	}
+
+	void size_lower_control_window()
+	{
+		RECT c_control_rect, display_rect,top_input_rect;
+		
+		GetClientRect(_topInput_wnd,&top_input_rect);
+		GetClientRect(_control_wnd,&c_control_rect);
+		GetClientRect(_measure_display_wnd,&display_rect);
+
+		int top = top_input_rect.bottom + display_rect.bottom;
+		int bottom = c_control_rect.bottom - top;
+
+		MoveWindow(_lower_control_wnd,0,top,c_control_rect.right,bottom,TRUE);
+
+	}
+
+	void size_MeasurmentDisplay_window()
+	{
+		RECT measure_display_rect;
+		RECT c_control_rect, top_input_rect;
+
+		GetClientRect(_control_wnd,&c_control_rect);
+		GetClientRect(_topInput_wnd,&top_input_rect);
+		
+		int lower_control_height = c_control_rect.bottom-top_input_rect.bottom-200;
+		MoveWindow(_measure_display_wnd,0,top_input_rect.bottom,
+			c_control_rect.right,lower_control_height,TRUE);
+
+		GetClientRect(_measure_display_wnd,&measure_display_rect);
+
+		int bottom = measure_display_rect.bottom - 25;
+
+		MoveWindow(_measurements_edit,10,20,120,bottom,TRUE);
+		MoveWindow(_standard_edit,135, 20, 120,bottom,TRUE);
+		MoveWindow(_needs_edit,260, 20, 120,bottom,TRUE);
+
 	}
 
 	void split_needs()
@@ -1366,28 +1392,6 @@ class MeasureWin
 		update_needs_display();
 	}
 	
-	void update_needs_display()
-	{
-		if(_needs.size() > 0)
-		{
-			string str;
-			char buff[50];
-			for(unsigned i = 0; i < _needs.size()-1; i++)
-			{
-				_needs[i].get_string(buff,50);
-				str.append(buff);
-				str.append("\r\n");
-			}
-
-			_needs.back().get_string(buff,50);
-			str.append(buff);
-
-			SetWindowText(_needs_edit,str.c_str());
-		}
-		else
-			SetWindowText(_needs_edit,"");
-	}
-
 	void update_measurment_display()
 	{
 		if(_measurments.size() > 0)
@@ -1408,6 +1412,28 @@ class MeasureWin
 		}
 		else
 			SetWindowText(_measurements_edit,"");
+	}
+
+	void update_needs_display()
+	{
+		if(_needs.size() > 0)
+		{
+			string str;
+			char buff[50];
+			for(unsigned i = 0; i < _needs.size()-1; i++)
+			{
+				_needs[i].get_string(buff,50);
+				str.append(buff);
+				str.append("\r\n");
+			}
+
+			_needs.back().get_string(buff,50);
+			str.append(buff);
+
+			SetWindowText(_needs_edit,str.c_str());
+		}
+		else
+			SetWindowText(_needs_edit,"");
 	}
 
 	void update_standard_display()
