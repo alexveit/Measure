@@ -36,18 +36,7 @@ class MeasureWin
 		{
 			_w_f += m._w_f;
 			_w_i += m._w_i;
-
-			bool good = false;
-			while(!good)
-			{
-				if(_w_i > 11)
-				{
-					_w_f++;
-					_w_i -= 12;
-				}
-				else
-					good = true;
-			}
+			normalize_width();	
 		}
 		
 		void draw(int name)
@@ -143,6 +132,36 @@ class MeasureWin
 			int comparewidth = (m._w_f*12) + m._w_i;
 
 			return mywidth <= comparewidth;
+		}
+		
+		void normalize_length()
+		{
+			bool good = false;
+			while(!good)
+			{
+				if(_l_i > 11)
+				{
+					_l_f++;
+					_l_i -= 12;
+				}
+				else
+					good = true;
+			}
+		}
+		
+		void normalize_width()
+		{
+			bool good = false;
+			while(!good)
+			{
+				if(_w_i > 11)
+				{
+					_w_f++;
+					_w_i -= 12;
+				}
+				else
+					good = true;
+			}
 		}
 
 		void subtract_width(const Measurment &m)
@@ -268,6 +287,9 @@ class MeasureWin
 			PostQuitMessage (0);
 			return 0;
 
+		case WM_ERASEBKGND:
+			return TRUE;
+
 		case WM_SIZE:
 			mw->size_frame_window();
 			return 0;
@@ -302,6 +324,9 @@ class MeasureWin
 		case WM_SIZE:
 			mw->size_control_window();
 			return 0;
+
+		case WM_ERASEBKGND:
+			return TRUE;
 
 		case WM_COMMAND:
 			switch(HIWORD(wParam))
@@ -343,6 +368,9 @@ class MeasureWin
 			mw->size_lower_control_window();
 			return 0;
 
+		case WM_ERASEBKGND:
+			return TRUE;
+
 		case WM_COMMAND:
 			switch(HIWORD(wParam))
 			{
@@ -383,6 +411,9 @@ class MeasureWin
 
 			return 0;
 
+		case WM_ERASEBKGND:
+			return TRUE;
+
 		case WM_COMMAND:
 			switch(HIWORD(wParam))
 			{
@@ -422,6 +453,8 @@ class MeasureWin
 		case WM_SIZE:
 			mw->size_MeasurmentDisplay_window();
 			return 0;
+		case WM_ERASEBKGND:
+			return TRUE;
 		}
 
 		return DefWindowProc(meas_wnd, message, wParam, lParam);
@@ -470,6 +503,9 @@ class MeasureWin
 		case WM_KEYDOWN:
 			mw->process_keydown(wParam);
 			break;
+
+		case WM_ERASEBKGND:
+			return TRUE;
 		}
 
 		return DefWindowProc(gl_wnd, message, wParam, lParam);
@@ -967,6 +1003,16 @@ class MeasureWin
 		}
 	}
 
+	bool is_numeric(char *buff, int size)
+	{
+		for(int i = 0; i < size; i++)
+		{
+			if(buff[i] < '0' || buff[i] > '9')
+				return false;
+		}
+		return true;
+	}
+
 	void kill_font()									// Delete The Font List
 	{
 		glDeleteLists(_base, 96);					// Delete All 96 Characters
@@ -1242,6 +1288,9 @@ class MeasureWin
 
 		GetWindowText(_length_inch_edit,buff,10);
 		m._l_i = atoi(buff);
+
+		m.normalize_width();
+		m.normalize_length();
 		
 		_measurments.push_back(m);
 	}
@@ -1462,49 +1511,88 @@ class MeasureWin
 	bool validate_input()
 	{
 		TCHAR buff[30];
-		int val = 0;
+		TCHAR wf[10];
+		TCHAR wi[10];
+		TCHAR lf[10];
+		TCHAR li[10];
 
-		GetWindowText(_width_feet_edit,buff,30);
-		val = atoi (buff);
-		if(val == 0)
+		GetWindowText(_width_feet_edit,wf,10);
+		GetWindowText(_width_inch_edit,wi,10);
+		GetWindowText(_length_feet_edit,lf,10);
+		GetWindowText(_length_inch_edit,li,10);
+
+		if(strlen(wf) == 0)
 		{
-			sprintf_s(buff,"Invalid feet value: %d",val);
-			MessageBox(_frame_wnd,buff,"Warning",MB_OK);
+			wf[0] = '0';
+			wf[1] = '\0';
+		}
+		if(strlen(wi) == 0)
+		{
+			wi[0] = '0';
+			wi[1] = '\0';
+		}
+		if(strlen(lf) == 0)
+		{
+			lf[0] = '0';
+			lf[1] = '\0';
+		}
+		if(strlen(li) == 0)
+		{
+			li[0] = '0';
+			li[1] = '\0';
+		}
+		if(!isdigit(wf[0]))
+		{
+			sprintf_s(buff,"Invalid feet value: %s",wf);
+			MessageBox(_topInput_wnd,buff,"Warning",MB_OK);
+			SetFocus(_width_feet_edit);
+			SendMessage(_width_feet_edit, EM_SETSEL, 0, -1);
+			return false;
+		}
+		if(!isdigit(wi[0]))
+		{
+			sprintf_s(buff,"Invalid inch value: %s",wi);
+			MessageBox(_topInput_wnd,buff,"Warning",MB_OK);
+			SetFocus(_width_inch_edit);
+			SendMessage(_width_inch_edit, EM_SETSEL, 0, -1);
+			return false;
+		}
+		if(!isdigit(lf[0]))
+		{
+			sprintf_s(buff,"Invalid feet value: %s",lf);
+			MessageBox(_topInput_wnd,buff,"Warning",MB_OK);
+			SetFocus(_length_feet_edit);
+			SendMessage(_length_feet_edit, EM_SETSEL, 0, -1);
+			return false;
+		}
+		if(!isdigit(li[0]))
+		{
+			sprintf_s(buff,"Invalid inch value: %s",li);
+			MessageBox(_topInput_wnd,buff,"Warning",MB_OK);
+			SetFocus(_length_inch_edit);
+			SendMessage(_length_inch_edit, EM_SETSEL, 0, -1);
+			return false;
+		}
+
+
+		int intwf = atoi (wf);
+		int intwi = atoi (wi);
+		int intlf = atoi (lf);
+		int intli = atoi (li);
+
+		if(intwf == 0 && intwi == 0)
+		{
+			MessageBox(_topInput_wnd,"Invalid Width:","Warning",MB_OK);
 			SetFocus(_width_feet_edit);
 			SendMessage(_width_feet_edit, EM_SETSEL, 0, -1);
 			return false;
 		}
 
-		GetWindowText(_width_inch_edit,buff,30);
-		val = atoi (buff);
-		if(val > 11)
+		if(intlf == 0 && intli == 0)
 		{
-			sprintf_s(buff,"Invalid inch value: %d",val);
-			MessageBox(_frame_wnd,buff,"Warning",MB_OK);
-			SetFocus(_width_inch_edit);
-			SendMessage(_width_inch_edit, EM_SETSEL, 0, -1);
-			return false;
-		}
-
-		GetWindowText(_length_feet_edit,buff,30);
-		val = atoi (buff);
-		if(val == 0)
-		{
-			sprintf_s(buff,"Invalid feet value: %d",val);
-			MessageBox(_frame_wnd,buff,"Warning",MB_OK);
+			MessageBox(_topInput_wnd,"Invalid Length:","Warning",MB_OK);
 			SetFocus(_length_feet_edit);
 			SendMessage(_length_feet_edit, EM_SETSEL, 0, -1);
-			return false;
-		}
-
-		GetWindowText(_length_inch_edit,buff,30);
-		val = atoi (buff);
-		if(val > 11)
-		{
-			sprintf_s(buff,"Invalid inch value: %d",val);
-			MessageBox(_frame_wnd,buff,"Warning",MB_OK);
-			SetFocus(_length_inch_edit);
-			SendMessage(_length_inch_edit, EM_SETSEL, 0, -1);
 			return false;
 		}
 
