@@ -3,6 +3,7 @@
 #include <vector>
 #include <gl\glu.h>
 #include <algorithm>
+#include <sstream>
 
 using namespace std;
 
@@ -847,18 +848,18 @@ class MeasureWin
 			210, 110, 170, 100,meas_total_wnd, NULL, _hInstance, NULL);
 
 
-		CreateWindow("STATIC", "Cost:",WS_VISIBLE | WS_CHILD | WS_BORDER,
-            218, 128, 40, 20, meas_total_wnd,NULL, _hInstance, NULL);
+		CreateWindow("STATIC", "Cost:",WS_VISIBLE | WS_CHILD,
+            218, 130, 40, 20, meas_total_wnd,NULL, _hInstance, NULL);
 
-		_total_cost_edit = CreateWindow("EDIT", "test",
-            WS_VISIBLE | WS_CHILD | ES_READONLY | ES_LEFT| WS_BORDER,
-			258, 128, 117, 20, meas_total_wnd,NULL, _hInstance, NULL);
+		_total_cost_edit = CreateWindow("EDIT", "",
+            WS_VISIBLE | WS_CHILD | ES_READONLY | ES_LEFT,
+			258, 130, 117, 20, meas_total_wnd,NULL, _hInstance, NULL);
 
-		CreateWindow("STATIC", "With:",WS_VISIBLE | WS_CHILD | WS_BORDER,
+		CreateWindow("STATIC", "With:",WS_VISIBLE | WS_CHILD,
             218, 155, 40, 20, meas_total_wnd,NULL, _hInstance, NULL);
 
-		_with_edit = CreateWindow("EDIT", "Pad,Install,Ripout",
-            WS_VISIBLE | WS_CHILD | ES_READONLY | ES_LEFT| WS_BORDER,
+		_with_edit = CreateWindow("EDIT", "",
+            WS_VISIBLE | WS_CHILD | ES_READONLY | ES_LEFT,
 			258, 155, 117, 20, meas_total_wnd,NULL, _hInstance, NULL);
 
 
@@ -1745,7 +1746,28 @@ class MeasureWin
 		else
 			SetWindowText(_calculated_needs_edit,"");
 	}
+	
+	void update_cost_display()
+	{
+		if(_standard.size() > 0 || _needs.size() > 0)
+		{
+			Measurment m = get_total_standard_length();
+			m.add_length(get_calculated_needs_length());
+			m._w_f = 12;
+			TCHAR buff[30];
+			
+			GetWindowText(_cost_edit,buff,30);
+			istringstream iss(buff);
+			float cost = 0;
+			iss >> cost;
 
+			sprintf_s(buff,"%.2f",(cost*m.get_square_footage())/9);
+			SetWindowText(_total_cost_edit,buff);
+		}
+		else
+			SetWindowText(_total_cost_edit,"");
+	}
+	
 	void update_display()
 	{
 		update_measurment_display();
@@ -1765,6 +1787,7 @@ class MeasureWin
 		update_square_yardage_display();
 		update_waist_footage_display();
 		update_waist_yardage_display();
+		update_cost_display();
 	}
 
 	void update_measurment_display()
