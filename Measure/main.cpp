@@ -16,12 +16,12 @@ processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 
 class MeasureWin
 {
-#define FRAME_WIN_CLASS					"FRAME_WIN_CLASS"
-#define CONTROLS_WIN_CLASS				"CONTROLS_WIN_CLASS"
-#define GL_WIN_CLASS					"GL_WIN_CLASS"
-#define MEASURMENT_DIPLAY_WIN_CLASS		"MEASURMENT_DIPLAY_WIN_CLASS"
-#define TOP_INPUT_WIN_CLASS				"TOP_INPUT_WIN_CLASS"
-#define LOWER_CONTROL_WIN_CLASS			"LOWER_CONTROL_WIN_CLASS"
+#define FRAME_WIN_CLASS							"FRAME_WIN_CLASS"
+#define CONTROLS_WIN_CLASS						"CONTROLS_WIN_CLASS"
+#define GL_WIN_CLASS							"GL_WIN_CLASS"
+#define MEASURMENT_DIPLAY_WIN_CLASS				"MEASURMENT_DIPLAY_WIN_CLASS"
+#define MEASURMENT_DIPLAY_TOTALS_WIN_CLASS		"MEASURMENT_DIPLAY_TOTALS_WIN_CLASS"
+#define TOP_INPUT_WIN_CLASS						"TOP_INPUT_WIN_CLASS"
 
 	struct Measurment
 	{
@@ -31,6 +31,38 @@ class MeasureWin
 		Measurment() : _w_f(0), _w_i(0), _l_f(0), _l_i(0), _x(0.0f), _y(0.0f), _print_text(false),_is_clicked(false) {}
 		Measurment(int w_f,int w_i,int l_f,int l_i) : 
 			_w_f(w_f), _w_i(w_i), _l_f(l_f), _l_i(l_i), _x(0.0f), _y(0.0f), _print_text(false),_is_clicked(false) {}
+		
+		Measurment(const Measurment& m)
+		{
+			_w_f = m._w_f;
+			_w_i = m._w_i;
+			_l_f = m._l_f;
+			_l_i = m._l_i;
+			_x = m._x;
+			_y = m._y;
+			_print_text = m._print_text;
+			_is_clicked = m._is_clicked;
+		}
+
+		Measurment& operator= (const Measurment& m)
+		{
+			_w_f = m._w_f;
+			_w_i = m._w_i;
+			_l_f = m._l_f;
+			_l_i = m._l_i;
+			_x = m._x;
+			_y = m._y;
+			_print_text = m._print_text;
+			_is_clicked = m._is_clicked;
+			return *this;
+		}
+
+		void add_length(const Measurment &m)
+		{
+			_l_f += m._l_f;
+			_l_i += m._l_i;
+			normalize_length();	
+		}
 		
 		void add_width(const Measurment &m)
 		{
@@ -47,7 +79,7 @@ class MeasureWin
 			glPushMatrix();
 
 				if(_is_clicked)
-					glTranslatef(0,0,.001f);
+					glTranslatef(0,0,.01f);
 
 
 
@@ -69,10 +101,11 @@ class MeasureWin
 			glPopMatrix();
 		}
 
-		float get_length_plus_y()
-		{
-			return _y + length_fraction();
-		}
+		float get_length_plus_y() { return _y + length_fraction(); }
+
+		void get_square_yardage_string(char *buff, size_t size)  { sprintf_s(buff,size,"%d",(_w_f*_l_f)/9); }
+
+		void get_square_footage_string(char *buff, size_t size) { sprintf_s(buff,size,"%d",_w_f*_l_f); }
 
 		void get_string(char *buff, size_t size)
 		{
@@ -216,9 +249,9 @@ class MeasureWin
 	HWND _frame_wnd;
 	HWND _control_wnd;
 	HWND _measure_display_wnd;
+	HWND _measure_displayTotals_wnd;
 	HWND _gl_wnd;
 	HWND _topInput_wnd;
-	HWND _lower_control_wnd;
 
 	HDC _hDC;
 	HGLRC _hRC;
@@ -241,6 +274,13 @@ class MeasureWin
 	HWND _measurements_edit;
 	HWND _standard_edit;
 	HWND _needs_edit;
+	HWND _standard_total_edit;
+	HWND _calculated_needs_edit;
+	HWND _ts_cn_edit;
+	HWND _square_foot_edit;
+	HWND _square_yard_edit;
+	HWND _square_foot_waist_edit;
+	HWND _square_yard_waist_edit;
 
 	HWND _add_button;
 	HWND _invert_button;
@@ -341,46 +381,6 @@ class MeasureWin
 		return DefWindowProc(control_wnd, message, wParam, lParam);
 	}
 	
-	static LRESULT CALLBACK WndProcLowerControl (HWND low_wnd, UINT message, WPARAM wParam, LPARAM lParam)
-	{
-		MeasureWin *mw = NULL;
-
-		//set user data, in this case, a pointer to my CubeInterface class
-		if(message == WM_CREATE)
-		{
-			//lParam contains a pointer to a CREATESTRUCT
-			//(CREATESTRUCT*)lParam)->lpCreateParams contains a pointer to CubeInterface
-			mw = (MeasureWin*)((CREATESTRUCT*)lParam)->lpCreateParams;
-
-			mw->create_lower_control(low_wnd);
-
-			//Actual line that stores my class in the window's user data
-			SetWindowLongPtr(low_wnd,GWLP_USERDATA,(LONG_PTR)mw);
-			return 0;
-		}
-
-		//Retrieve my class
-		mw = (MeasureWin*)GetWindowLongPtr(low_wnd,GWLP_USERDATA);
-
-		switch (message)
-		{
-		case WM_SIZE:
-			mw->size_lower_control_window();
-			break;
-
-		case WM_COMMAND:
-			switch(HIWORD(wParam))
-			{
-			case BN_CLICKED:
-				mw->process_button_click(lParam);
-				break;
-			}
-			break;
-		}
-
-		return DefWindowProc(low_wnd, message, wParam, lParam);
-	}
-	
 	static LRESULT CALLBACK WndProcTopInput (HWND top_wnd, UINT message, WPARAM wParam, LPARAM lParam)
 	{
 		MeasureWin *mw = NULL;
@@ -452,6 +452,47 @@ class MeasureWin
 		}
 
 		return DefWindowProc(meas_wnd, message, wParam, lParam);
+	}
+	
+	static LRESULT CALLBACK WndProcMeasurmentDisplayTotals (HWND meas_total_wnd, UINT message, WPARAM wParam, LPARAM lParam)
+	{
+		MeasureWin *mw = NULL;
+
+		//set user data, in this case, a pointer to my CubeInterface class
+		if(message == WM_CREATE)
+		{
+			//lParam contains a pointer to a CREATESTRUCT
+			//(CREATESTRUCT*)lParam)->lpCreateParams contains a pointer to CubeInterface
+			mw = (MeasureWin*)((CREATESTRUCT*)lParam)->lpCreateParams;
+
+			mw->create_MeasurmentDisplayTotals(meas_total_wnd);
+
+			//Actual line that stores my class in the window's user data
+			SetWindowLongPtr(meas_total_wnd,GWLP_USERDATA,(LONG_PTR)mw);
+			return 0;
+		}
+
+		//Retrieve my class
+		mw = (MeasureWin*)GetWindowLongPtr(meas_total_wnd,GWLP_USERDATA);
+
+		switch (message)
+		{
+		case WM_SIZE:
+			//mw->size_MeasurmentDisplay_window();
+			break;
+
+		case WM_COMMAND:
+			switch(HIWORD(wParam))
+			{
+			case BN_CLICKED:
+				mw->process_button_click(lParam);
+				break;
+			}
+			break;
+
+		}
+
+		return DefWindowProc(meas_total_wnd, message, wParam, lParam);
 	}
 
 	static LRESULT CALLBACK WndProcGL (HWND gl_wnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -573,6 +614,7 @@ class MeasureWin
 			if(ordered_needs.size() > 0)
 			{
 				remaining._w_f = 12;
+				remaining._w_i = 0;
 				remaining._x = 0;
 				remaining._y = get_biggest_y_from_accounted();
 			}
@@ -670,24 +712,13 @@ class MeasureWin
 		GetClientRect(control_wnd,&c_rect);
 
 		_topInput_wnd = CreateWindow (TOP_INPUT_WIN_CLASS, NULL,
-			WS_CHILD | WS_VISIBLE | WS_BORDER,0, 0, c_rect.right, 80,
+			WS_CHILD | WS_VISIBLE | WS_BORDER,0, 0, c_rect.right, 70,
 			control_wnd, NULL, _hInstance, this);
 
 		_measure_display_wnd = CreateWindow (MEASURMENT_DIPLAY_WIN_CLASS, NULL,
-			WS_CHILD | WS_VISIBLE | WS_BORDER,0, 400, 50, 50,
+			WS_CHILD | WS_VISIBLE| WS_BORDER,0, 400, 50, 50,
 			control_wnd, NULL, _hInstance, this);
 
-		_lower_control_wnd = CreateWindow (LOWER_CONTROL_WIN_CLASS, NULL,
-			WS_CHILD | WS_VISIBLE | WS_BORDER,0, 600, 200, 50,
-			control_wnd, NULL, _hInstance, this);
-
-	}
-	
-	void create_lower_control(HWND low_wnd)
-	{
-
-		_clear_button = CreateWindow("BUTTON", "Clear",WS_VISIBLE | WS_CHILD,
-			0, 0, 83, 35,low_wnd,NULL, _hInstance, NULL);
 	}
 
 	void create_MeasurmentDisplay(HWND meas_wnd)
@@ -695,15 +726,15 @@ class MeasureWin
 		CreateWindow("STATIC", "Measurments",WS_VISIBLE | WS_CHILD,
                       10, 0, 95, 18,meas_wnd,NULL, _hInstance, NULL);
 
-		_measurements_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
+		_measurements_edit = CreateWindow("EDIT", "",
                       WS_VISIBLE | WS_CHILD | ES_READONLY | ES_MULTILINE | 
 					  WS_VSCROLL | ES_LEFT, 10, 20, 120, 265,
 					  meas_wnd,NULL, _hInstance, NULL);
 
 		CreateWindow("STATIC", "Standard",WS_VISIBLE | WS_CHILD,
-                      135, 0, 65, 18,meas_wnd,NULL, _hInstance, NULL);
+                      135, 0, 65, 18, meas_wnd,NULL, _hInstance, NULL);
 
-		_standard_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
+		_standard_edit = CreateWindow("EDIT", "",
                       WS_VISIBLE | WS_CHILD | ES_READONLY | ES_MULTILINE | 
 					  WS_VSCROLL | ES_LEFT, 135, 20, 120, 265,
 					  meas_wnd,NULL, _hInstance, NULL);
@@ -711,10 +742,14 @@ class MeasureWin
 		CreateWindow("STATIC", "Needs",WS_VISIBLE | WS_CHILD,
                       260, 0, 50, 18,meas_wnd,NULL, _hInstance, NULL);
 
-		_needs_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
+		_needs_edit = CreateWindow("EDIT", "",
                       WS_VISIBLE | WS_CHILD | ES_READONLY | ES_MULTILINE | 
 					  WS_VSCROLL | ES_LEFT, 260, 20, 120, 265,
 					  meas_wnd,NULL, _hInstance, NULL);
+
+		_measure_displayTotals_wnd = CreateWindow (MEASURMENT_DIPLAY_TOTALS_WIN_CLASS, NULL,
+			WS_CHILD | WS_VISIBLE | WS_BORDER,0, 100, 50, 50,
+			meas_wnd, NULL, _hInstance, this);
 
 		HFONT hFont=CreateFont(0,6,0,0,0,0,0,0,0,0,0,0,0,TEXT("Courier New"));
 		SendMessage(_measurements_edit,WM_SETFONT,(WPARAM)hFont,0);
@@ -723,48 +758,123 @@ class MeasureWin
 
 	}
 	
+	void create_MeasurmentDisplayTotals(HWND meas_total_wnd)
+	{
+
+		_clear_button = CreateWindow("BUTTON", "Clear All",WS_VISIBLE | WS_CHILD,
+			20, 20, 90, 35,meas_total_wnd,NULL, _hInstance, NULL);
+
+		CreateWindow("STATIC", "Totals\r\nStandards",WS_VISIBLE | WS_CHILD,
+                      135, 0, 100, 38, meas_total_wnd,NULL, _hInstance, NULL);
+
+		CreateWindow("STATIC", "Calculated\r\nNeeds",WS_VISIBLE | WS_CHILD,
+                      260, 0, 100, 38,meas_total_wnd,NULL, _hInstance, NULL);
+
+		_standard_total_edit = CreateWindow("EDIT", "",
+                      WS_VISIBLE | WS_CHILD | ES_READONLY | ES_LEFT,
+					  135, 38, 120, 20,meas_total_wnd,NULL, _hInstance, NULL);
+
+		_calculated_needs_edit = CreateWindow("EDIT", "", //_needs_edit = 
+                      WS_VISIBLE | WS_CHILD | ES_READONLY | ES_LEFT,
+					  260, 38, 120, 20, meas_total_wnd,NULL, _hInstance, NULL);
+
+
+		CreateWindow("STATIC", "Total Roll",WS_VISIBLE | WS_CHILD,
+                      135, 65, 80, 20, meas_total_wnd,NULL, _hInstance, NULL);
+
+		_ts_cn_edit = CreateWindow("EDIT", "",
+                      WS_VISIBLE | WS_CHILD | ES_READONLY | ES_LEFT,
+					  135, 85, 120, 20, meas_total_wnd,NULL, _hInstance, NULL);
+
+
+		CreateWindow ("BUTTON", "Area",WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
+			5, 110, 195, 100,meas_total_wnd, NULL, _hInstance, NULL);
+
+
+		CreateWindow("STATIC", "Sq ft",WS_VISIBLE | WS_CHILD,
+                      65, 130, 50, 20, meas_total_wnd,NULL, _hInstance, NULL);
+
+		CreateWindow("STATIC", "Sq yd",WS_VISIBLE | WS_CHILD,
+                      130, 130, 50, 20, meas_total_wnd,NULL, _hInstance, NULL);
+
+		CreateWindow("STATIC", "Total",WS_VISIBLE | WS_CHILD,
+                      15, 150, 50, 20, meas_total_wnd,NULL, _hInstance, NULL);
+
+		_square_foot_edit = CreateWindow("EDIT", "",
+                      WS_VISIBLE | WS_CHILD | ES_READONLY | ES_LEFT,
+					  65, 150, 60, 20, meas_total_wnd,NULL, _hInstance, NULL);
+
+		_square_yard_edit = CreateWindow("EDIT", "",
+                      WS_VISIBLE | WS_CHILD | ES_READONLY | ES_LEFT,
+					  130, 150, 60, 20, meas_total_wnd,NULL, _hInstance, NULL);
+
+		int buff = 30;
+
+		CreateWindow("STATIC", "Waist",WS_VISIBLE | WS_CHILD,
+                      15, 150+buff, 50, 20, meas_total_wnd,NULL, _hInstance, NULL);
+
+		_square_foot_waist_edit = CreateWindow("EDIT", "",
+                      WS_VISIBLE | WS_CHILD | ES_READONLY | ES_LEFT,
+					  65, 150+buff, 60, 20, meas_total_wnd,NULL, _hInstance, NULL);
+
+		_square_yard_waist_edit = CreateWindow("EDIT", "",
+                      WS_VISIBLE | WS_CHILD | ES_READONLY | ES_LEFT,
+					  130, 150+buff, 60, 20, meas_total_wnd,NULL, _hInstance, NULL);
+
+
+		HFONT hFont=CreateFont(0,6,0,0,0,0,0,0,0,0,0,0,0,TEXT("Courier New"));
+
+		SendMessage(_square_foot_edit,WM_SETFONT,(WPARAM)hFont,0);
+		SendMessage(_square_yard_edit,WM_SETFONT,(WPARAM)hFont,0);
+		SendMessage(_square_foot_waist_edit,WM_SETFONT,(WPARAM)hFont,0);
+		SendMessage(_square_yard_waist_edit,WM_SETFONT,(WPARAM)hFont,0);
+		SendMessage(_standard_total_edit,WM_SETFONT,(WPARAM)hFont,0);
+		SendMessage(_calculated_needs_edit,WM_SETFONT,(WPARAM)hFont,0);
+		SendMessage(_ts_cn_edit,WM_SETFONT,(WPARAM)hFont,0);
+	}
+
 	void create_top_inputs(HWND top_wnd)
 	{
 
 		CreateWindow ("BUTTON", "Input",
-			WS_CHILD | WS_VISIBLE | BS_GROUPBOX,10, 10, 265, 55,
+			WS_CHILD | WS_VISIBLE | BS_GROUPBOX,10, 10, 265, 50,
 			top_wnd, NULL, _hInstance, NULL);
 
 		_width_feet_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
                       WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_LEFT | WS_TABSTOP,
-                      17, 30, 35, 25,top_wnd,NULL, _hInstance, NULL);
+                      17, 30, 35, 20,top_wnd,NULL, _hInstance, NULL);
 
 		CreateWindow("STATIC", "'",WS_VISIBLE | WS_CHILD,
-                      54, 30, 5, 25,top_wnd,NULL, _hInstance, NULL);
+                      54, 30, 5, 20,top_wnd,NULL, _hInstance, NULL);
 
 		_width_inch_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
                       WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_LEFT | WS_TABSTOP,
-                      61, 30, 30, 25,top_wnd,NULL, _hInstance, NULL);
+                      61, 30, 30, 20,top_wnd,NULL, _hInstance, NULL);
 
 		CreateWindow("STATIC", "\"  X",WS_VISIBLE | WS_CHILD,
-                      93, 30, 30, 25,top_wnd,NULL, _hInstance, NULL);
+                      93, 30, 30, 20,top_wnd,NULL, _hInstance, NULL);
 
 		int buff = 110;
 
 		_length_feet_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
                       WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_LEFT | WS_TABSTOP,
-                      17+buff, 30, 35, 25,top_wnd,NULL, _hInstance, NULL);
+                      17+buff, 30, 35, 20,top_wnd,NULL, _hInstance, NULL);
 
 		CreateWindow("STATIC", "'",WS_VISIBLE | WS_CHILD,
-                      54+buff, 30, 5, 25,top_wnd,NULL, _hInstance, NULL);
+                      54+buff, 30, 5, 20,top_wnd,NULL, _hInstance, NULL);
 
 		_length_inch_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
                       WS_VISIBLE | WS_CHILD | ES_NUMBER | ES_LEFT | WS_TABSTOP,
-                      61+buff, 30, 30, 25,top_wnd,NULL, _hInstance, NULL);
+                      61+buff, 30, 30, 20,top_wnd,NULL, _hInstance, NULL);
 
 		CreateWindow("STATIC", "\"",WS_VISIBLE | WS_CHILD,
-                      93+buff, 30, 8, 25,top_wnd,NULL, _hInstance, NULL);
+                      93+buff, 30, 8, 20,top_wnd,NULL, _hInstance, NULL);
 
 		_add_button = CreateWindow("BUTTON", "Add",WS_VISIBLE | WS_CHILD | WS_TABSTOP,
-                      105+buff, 30, 50, 25,top_wnd,NULL, _hInstance, NULL);
+                      105+buff, 30, 50, 20,top_wnd,NULL, _hInstance, NULL);
 
 		_invert_button = CreateWindow("BUTTON", "Invert",WS_VISIBLE | WS_CHILD,
-                      180+buff, 25, 83, 35,top_wnd,NULL, _hInstance, NULL);
+                      180+buff, 21, 83, 35,top_wnd,NULL, _hInstance, NULL);
 	}
 	
 	void draw_gl_scene()
@@ -816,7 +926,7 @@ class MeasureWin
 		glPushMatrix();
 			
 
-			glTranslatef(0,0,-0.001f);
+			glTranslatef(0,0,-0.01f);
 			
 			glColor3f(1.0f,0.0f,0.0f);
 			glBegin(GL_QUADS);
@@ -875,6 +985,34 @@ class MeasureWin
 		return len;
 	}
 	
+	Measurment get_calculated_needs_length()
+	{
+		Measurment m;
+
+		float len = get_biggest_y_from_accounted();
+
+		float fractpart, intpart;
+
+		fractpart = modf (len , &intpart);
+
+		m._l_f = (int)intpart;
+	
+		if(fractpart >= .91f)		m._l_i = 11;
+		else if(fractpart >= .82f)	m._l_i = 10;
+		else if(fractpart >= .74f)	m._l_i = 9;
+		else if(fractpart >= .66f)	m._l_i = 8;
+		else if(fractpart >= .57f)	m._l_i = 7;
+		else if(fractpart >= .49f)	m._l_i = 6;
+		else if(fractpart >= .41f)	m._l_i = 5;
+		else if(fractpart >= .32f)	m._l_i = 4;
+		else if(fractpart >= .24f)	m._l_i = 3;
+		else if(fractpart >= .16f)	m._l_i = 2;
+		else if(fractpart >= .06f)	m._l_i = 1;
+		else						m._l_i = 0;
+
+		return m;
+	}
+
 	float get_motion_dist()
 	{
 		RECT gl_rect;
@@ -938,7 +1076,7 @@ class MeasureWin
  
 		//restrict the draw to an area around the cursor
 		gluPickMatrix(x, gl_rect.bottom-y, .1f, .1f, view);
-		gluPerspective(45.0f,(GLfloat)gl_rect.right/(GLfloat)gl_rect.bottom,0.1f,100.0f);
+		gluPerspective(45.0f,(GLfloat)gl_rect.right/(GLfloat)gl_rect.bottom,0.1f,500.0f);
  
 		//Draw the objects onto the screen
 		glMatrixMode(GL_MODELVIEW);
@@ -966,6 +1104,16 @@ class MeasureWin
 
 
 		glMatrixMode(GL_MODELVIEW);
+	}
+
+	Measurment get_total_standard_length()
+	{
+		Measurment m;
+		for(unsigned i = 0; i < _standard.size(); i++)
+		{
+			m.add_length(_standard[i]);
+		}
+		return m;
 	}
 
 	void init_gl()							// All Setup For OpenGL Goes Here
@@ -1134,8 +1282,8 @@ class MeasureWin
 		split_needs();
 		consolidate_needs();
 		consolidate_standards();
-		update_display();
 		calculate_totals();
+		update_display();
 	}
 
 	void process_keydown(WPARAM wParam)
@@ -1198,6 +1346,7 @@ class MeasureWin
 
 				last_xPos = xPos;
 				last_yPos = yPos;
+				update_display_dynamic();
 			}
 		}
 		gl_select(xPos,yPos,false);
@@ -1207,11 +1356,13 @@ class MeasureWin
 	{
 		if(w > WHEEL_DELTA)
 		{
-			z_dist += 1.0f;
+			if(z_dist > -100)
+				z_dist -= 1.0f;
 		}
 		else
 		{
-			z_dist -= 1.0f;
+			if(z_dist < -2)
+				z_dist += 1.0f;
 		}
 	}
 
@@ -1244,8 +1395,8 @@ class MeasureWin
 		wc.lpszClassName = TOP_INPUT_WIN_CLASS;
 		RegisterClass (&wc);
 
-		wc.lpfnWndProc = WndProcLowerControl;
-		wc.lpszClassName = LOWER_CONTROL_WIN_CLASS;
+		wc.lpfnWndProc = WndProcMeasurmentDisplayTotals;
+		wc.lpszClassName = MEASURMENT_DIPLAY_TOTALS_WIN_CLASS;
 		RegisterClass (&wc);
 
 		wc.lpfnWndProc = WndProcMeasurmentDisplay;
@@ -1343,8 +1494,6 @@ class MeasureWin
 		MoveWindow(_control_wnd,0,0,c_control_rect.right,c_frame_rect.bottom,TRUE); //good so far
 
 		SendMessage(_measure_display_wnd,WM_SIZE,(WPARAM)NULL,(WPARAM)NULL);
-		SendMessage(_lower_control_wnd,WM_SIZE,(WPARAM)NULL,(WPARAM)NULL);
-
 	}
 	
 	void size_frame_window()
@@ -1365,21 +1514,6 @@ class MeasureWin
 		resize_gl_scene(c_frame_rect,c_control_rect);
 	}
 
-	void size_lower_control_window()
-	{
-		RECT c_control_rect, display_rect,top_input_rect;
-		
-		GetClientRect(_topInput_wnd,&top_input_rect);
-		GetClientRect(_control_wnd,&c_control_rect);
-		GetClientRect(_measure_display_wnd,&display_rect);
-
-		int top = top_input_rect.bottom + display_rect.bottom;
-		int bottom = c_control_rect.bottom - top;
-
-		MoveWindow(_lower_control_wnd,0,top,c_control_rect.right,bottom,TRUE);
-
-	}
-
 	void size_MeasurmentDisplay_window()
 	{
 		RECT measure_display_rect;
@@ -1388,17 +1522,21 @@ class MeasureWin
 		GetClientRect(_control_wnd,&c_control_rect);
 		GetClientRect(_topInput_wnd,&top_input_rect);
 		
-		int lower_control_height = c_control_rect.bottom-top_input_rect.bottom-200;
+		int lower_control_height = c_control_rect.bottom-top_input_rect.bottom;
 		MoveWindow(_measure_display_wnd,0,top_input_rect.bottom,
 			c_control_rect.right,lower_control_height,TRUE);
 
 		GetClientRect(_measure_display_wnd,&measure_display_rect);
 
-		int bottom = measure_display_rect.bottom - 25;
+		int bottom = measure_display_rect.bottom - 300;
 
 		MoveWindow(_measurements_edit,10,20,120,bottom,TRUE);
 		MoveWindow(_standard_edit,135, 20, 120,bottom,TRUE);
 		MoveWindow(_needs_edit,260, 20, 120,bottom,TRUE);
+
+		bottom += 25;
+
+		MoveWindow(_measure_displayTotals_wnd,0,bottom,c_control_rect.right,250,TRUE);
 
 	}
 
@@ -1432,13 +1570,41 @@ class MeasureWin
 		}
 	}
 
+	void update_calculated_needs_display()
+	{
+		if(_accounted.size() > 0)
+		{
+			Measurment m = get_calculated_needs_length();
+			m._w_f = 12;
+			TCHAR buff[30];
+
+			m.get_string(buff,30);
+
+			SetWindowText(_calculated_needs_edit,buff);
+		}
+		else
+			SetWindowText(_calculated_needs_edit,"");
+	}
+
 	void update_display()
 	{
 		update_measurment_display();
 		update_standard_display();
 		update_needs_display();
+
+		update_total_standards_display();
+
+		update_display_dynamic();
 	}
 	
+	void update_display_dynamic()
+	{
+		update_calculated_needs_display();
+		update_tscn_display();
+		update_square_footage_display();
+		update_square_yardage_display();
+	}
+
 	void update_measurment_display()
 	{
 		if(_measurments.size() > 0)
@@ -1483,6 +1649,38 @@ class MeasureWin
 			SetWindowText(_needs_edit,"");
 	}
 
+	void update_square_footage_display()
+	{
+		if(_standard.size() > 0 || _needs.size() > 0)
+		{
+			Measurment m = get_total_standard_length();
+			m.add_length(get_calculated_needs_length());
+			m._w_f = 12;
+			TCHAR buff[30];
+			m.get_square_footage_string(buff,30);
+
+			SetWindowText(_square_foot_edit,buff);
+		}
+		else
+			SetWindowText(_square_foot_edit,"");
+	}
+	
+	void update_square_yardage_display()
+	{
+		if(_standard.size() > 0 || _needs.size() > 0)
+		{
+			Measurment m = get_total_standard_length();
+			m.add_length(get_calculated_needs_length());
+			m._w_f = 12;
+			TCHAR buff[30];
+			m.get_square_yardage_string(buff,30);
+
+			SetWindowText(_square_yard_edit,buff);
+		}
+		else
+			SetWindowText(_square_yard_edit,"");
+	}
+
 	void update_standard_display()
 	{
 		if(_standard.size() > 0)
@@ -1504,6 +1702,37 @@ class MeasureWin
 		}
 		else
 			SetWindowText(_standard_edit,"");
+	}
+
+	void update_total_standards_display()
+	{
+		if(_standard.size() > 0)
+		{
+			Measurment m = get_total_standard_length();
+			m._w_f = 12;
+			TCHAR buff[30];
+
+			m.get_string(buff,30);
+
+			SetWindowText(_standard_total_edit,buff);
+		}
+		else
+			SetWindowText(_standard_total_edit,"");
+	}
+
+	void update_tscn_display()
+	{
+		if(_standard.size() > 0 || _needs.size() > 0)
+		{
+			Measurment m = get_total_standard_length();
+			m.add_length(get_calculated_needs_length());
+			m._w_f = 12;
+			TCHAR buff[30];
+			m.get_string(buff,30);
+			SetWindowText(_ts_cn_edit,buff);
+		}
+		else
+			SetWindowText(_ts_cn_edit,"");
 	}
 
 	bool validate_input()
