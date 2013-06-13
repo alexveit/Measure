@@ -103,9 +103,11 @@ class MeasureWin
 
 		float get_length_plus_y() { return _y + length_fraction(); }
 
-		void get_square_yardage_string(char *buff, size_t size)  { sprintf_s(buff,size,"%d",(_w_f*_l_f)/9); }
+		int get_square_footage() { return _w_f * _l_f; }
 
 		void get_square_footage_string(char *buff, size_t size) { sprintf_s(buff,size,"%d",_w_f*_l_f); }
+
+		void get_square_yardage_string(char *buff, size_t size)  { sprintf_s(buff,size,"%d",(_w_f*_l_f)/9); }
 
 		void get_string(char *buff, size_t size)
 		{
@@ -281,10 +283,21 @@ class MeasureWin
 	HWND _square_yard_edit;
 	HWND _square_foot_waist_edit;
 	HWND _square_yard_waist_edit;
+	HWND _with_edit;
+	HWND _total_cost_edit;
+
+	HWND _cost_edit;
+	HWND _padd_edit;
+	HWND _install_edit;
+	HWND _ripout_edit;
 
 	HWND _add_button;
 	HWND _invert_button;
 	HWND _clear_button;
+	HWND _padd_check;
+	HWND _install_check;
+	HWND _ripout_check;
+
 
 	vector<Measurment> _measurments;
 	vector<Measurment> _standard;
@@ -293,7 +306,6 @@ class MeasureWin
 
 	bool _done_with_input;
 
-	
 	static bool sort_function(const Measurment &m1, const Measurment &m2)
 	{
 		return m1.length_fraction() > m2.length_fraction();
@@ -631,6 +643,15 @@ class MeasureWin
 		_accounted.clear();
 		clear_inputs();
 		update_display();
+		LRESULT res = SendMessage(_padd_check,BM_GETCHECK,(WPARAM)0,(LPARAM)0);
+		if(res == BST_CHECKED)
+			SendMessage(_padd_check,BM_CLICK,(WPARAM)0,(LPARAM)0);
+		res = SendMessage(_install_check,BM_GETCHECK,(WPARAM)0,(LPARAM)0);
+		if(res == BST_CHECKED)
+			SendMessage(_install_check,BM_CLICK,(WPARAM)0,(LPARAM)0);
+		res = SendMessage(_ripout_check,BM_GETCHECK,(WPARAM)0,(LPARAM)0);
+		if(res == BST_CHECKED)
+			SendMessage(_ripout_check,BM_CLICK,(WPARAM)0,(LPARAM)0);
 		set_default_dists();
 		_done_with_input = false;
 	}
@@ -641,6 +662,7 @@ class MeasureWin
 		SetWindowText(_width_inch_edit,"");
 		SetWindowText(_length_feet_edit,"");
 		SetWindowText(_length_inch_edit,"");
+		SetWindowText(_cost_edit,"");
 	}
 
 	void consolidate_needs()
@@ -712,11 +734,11 @@ class MeasureWin
 		GetClientRect(control_wnd,&c_rect);
 
 		_topInput_wnd = CreateWindow (TOP_INPUT_WIN_CLASS, NULL,
-			WS_CHILD | WS_VISIBLE | WS_BORDER,0, 0, c_rect.right, 70,
+			WS_CHILD | WS_VISIBLE,0, 0, c_rect.right, 140,
 			control_wnd, NULL, _hInstance, this);
 
 		_measure_display_wnd = CreateWindow (MEASURMENT_DIPLAY_WIN_CLASS, NULL,
-			WS_CHILD | WS_VISIBLE| WS_BORDER,0, 400, 50, 50,
+			WS_CHILD | WS_VISIBLE,0, 400, 50, 50,
 			control_wnd, NULL, _hInstance, this);
 
 	}
@@ -748,7 +770,7 @@ class MeasureWin
 					  meas_wnd,NULL, _hInstance, NULL);
 
 		_measure_displayTotals_wnd = CreateWindow (MEASURMENT_DIPLAY_TOTALS_WIN_CLASS, NULL,
-			WS_CHILD | WS_VISIBLE | WS_BORDER,0, 100, 50, 50,
+			WS_CHILD | WS_VISIBLE,0, 100, 50, 50,
 			meas_wnd, NULL, _hInstance, this);
 
 		HFONT hFont=CreateFont(0,6,0,0,0,0,0,0,0,0,0,0,0,TEXT("Courier New"));
@@ -821,9 +843,29 @@ class MeasureWin
                       WS_VISIBLE | WS_CHILD | ES_READONLY | ES_LEFT,
 					  130, 150+buff, 60, 20, meas_total_wnd,NULL, _hInstance, NULL);
 
+		CreateWindow ("BUTTON", "Estimate",WS_CHILD | WS_VISIBLE | BS_GROUPBOX,
+			210, 110, 170, 100,meas_total_wnd, NULL, _hInstance, NULL);
+
+
+		CreateWindow("STATIC", "Cost:",WS_VISIBLE | WS_CHILD | WS_BORDER,
+            218, 128, 40, 20, meas_total_wnd,NULL, _hInstance, NULL);
+
+		_total_cost_edit = CreateWindow("EDIT", "test",
+            WS_VISIBLE | WS_CHILD | ES_READONLY | ES_LEFT| WS_BORDER,
+			258, 128, 117, 20, meas_total_wnd,NULL, _hInstance, NULL);
+
+		CreateWindow("STATIC", "With:",WS_VISIBLE | WS_CHILD | WS_BORDER,
+            218, 155, 40, 20, meas_total_wnd,NULL, _hInstance, NULL);
+
+		_with_edit = CreateWindow("EDIT", "Pad,Install,Ripout",
+            WS_VISIBLE | WS_CHILD | ES_READONLY | ES_LEFT| WS_BORDER,
+			258, 155, 117, 20, meas_total_wnd,NULL, _hInstance, NULL);
+
 
 		HFONT hFont=CreateFont(0,6,0,0,0,0,0,0,0,0,0,0,0,TEXT("Courier New"));
 
+		SendMessage(_with_edit,WM_SETFONT,(WPARAM)hFont,0);
+		SendMessage(_total_cost_edit,WM_SETFONT,(WPARAM)hFont,0);
 		SendMessage(_square_foot_edit,WM_SETFONT,(WPARAM)hFont,0);
 		SendMessage(_square_yard_edit,WM_SETFONT,(WPARAM)hFont,0);
 		SendMessage(_square_foot_waist_edit,WM_SETFONT,(WPARAM)hFont,0);
@@ -836,7 +878,7 @@ class MeasureWin
 	void create_top_inputs(HWND top_wnd)
 	{
 
-		CreateWindow ("BUTTON", "Input",
+		CreateWindow ("BUTTON", "Measurement Input",
 			WS_CHILD | WS_VISIBLE | BS_GROUPBOX,10, 10, 265, 50,
 			top_wnd, NULL, _hInstance, NULL);
 
@@ -875,6 +917,41 @@ class MeasureWin
 
 		_invert_button = CreateWindow("BUTTON", "Invert",WS_VISIBLE | WS_CHILD,
                       180+buff, 21, 83, 35,top_wnd,NULL, _hInstance, NULL);
+
+		CreateWindow ("BUTTON", "Fees",
+			WS_CHILD | WS_VISIBLE | BS_GROUPBOX,10, 60, 370, 70,
+			top_wnd, NULL, _hInstance, NULL);
+
+		CreateWindow("STATIC", "Carpet Cost",WS_VISIBLE | WS_CHILD,
+                      17, 80, 80, 20,top_wnd,NULL, _hInstance, NULL);
+
+		_cost_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
+                      WS_VISIBLE | WS_CHILD | ES_LEFT | WS_TABSTOP,
+                      17, 100, 50, 20,top_wnd,NULL, _hInstance, NULL);
+
+		_padd_check = CreateWindow ("BUTTON", "Padding",
+			WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+			120, 80, 75, 20,top_wnd, NULL, _hInstance, NULL);
+
+		_padd_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
+            WS_VISIBLE | WS_DISABLED | WS_CHILD | ES_LEFT | WS_TABSTOP,
+            120, 100, 50, 20,top_wnd,NULL, _hInstance, NULL);
+
+		_install_check = CreateWindow ("BUTTON", "Install",
+			WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+			210, 80, 60, 20,top_wnd, NULL, _hInstance, NULL);
+
+		_install_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
+            WS_VISIBLE | WS_DISABLED | WS_CHILD | ES_LEFT | WS_TABSTOP,
+            210, 100, 50, 20,top_wnd,NULL, _hInstance, NULL);
+
+		_ripout_check = CreateWindow ("BUTTON", "Ripout",
+			WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+			300, 80, 65, 20,top_wnd, NULL, _hInstance, NULL);
+
+		_ripout_edit = CreateWindowEx(WS_EX_CLIENTEDGE, "EDIT", "",
+            WS_VISIBLE | WS_DISABLED | WS_CHILD | ES_LEFT | WS_TABSTOP,
+            300, 100, 50, 20,top_wnd,NULL, _hInstance, NULL);
 	}
 	
 	void draw_gl_scene()
@@ -905,7 +982,7 @@ class MeasureWin
 				glPushMatrix();
 					glColor3f(0.0f,0.0f,0.0f);
 					_accounted[i].get_string(buff,20);
-					glRasterPos3f(_accounted[i]._x+0.3f, (_accounted[i]._y*-1)-1.0f,0.01f);
+					glRasterPos3f(_accounted[i]._x, (_accounted[i]._y*-1)-1.5f,0.2f);
  					gl_print(buff);
 				glPopMatrix();
 			}
@@ -1105,6 +1182,26 @@ class MeasureWin
 
 		glMatrixMode(GL_MODELVIEW);
 	}
+	
+	int get_needs_sqft()
+	{
+		int sqft = 0;
+		for(unsigned i = 0; i < _needs.size(); i++)
+		{
+			sqft += _needs[i].get_square_footage();
+		}
+		return sqft;
+	}
+
+	int get_standard_sqft()
+	{
+		int sqft = 0;
+		for(unsigned i = 0; i < _standard.size(); i++)
+		{
+			sqft += _standard[i].get_square_footage();
+		}
+		return sqft;
+	}
 
 	Measurment get_total_standard_length()
 	{
@@ -1233,6 +1330,18 @@ class MeasureWin
 		{
 			clear_all();
 		}
+		else if((HWND)lParam == _padd_check)
+		{
+			process_padd_ckeck();
+		}
+		else if((HWND)lParam == _install_check)
+		{
+			process_install_ckeck();
+		}
+		else if((HWND)lParam == _ripout_check)
+		{
+			process_ripout_ckeck();
+		}
 		SetFocus(_width_feet_edit);
 		SetActiveWindow(_width_feet_edit);
 	}
@@ -1284,6 +1393,23 @@ class MeasureWin
 		consolidate_standards();
 		calculate_totals();
 		update_display();
+	}
+	
+	void process_install_ckeck()
+	{
+		LRESULT res = SendMessage(_install_check,BM_GETCHECK,(WPARAM)0,(LPARAM)0);
+
+		if(res == BST_CHECKED)
+		{
+			EnableWindow(_install_edit,TRUE);
+			SetWindowText(_install_edit,"3.50");
+		}
+		else
+		{
+			EnableWindow(_install_edit,FALSE);
+			SetWindowText(_install_edit,"");
+		}
+
 	}
 
 	void process_keydown(WPARAM wParam)
@@ -1350,6 +1476,40 @@ class MeasureWin
 			}
 		}
 		gl_select(xPos,yPos,false);
+	}
+
+	void process_padd_ckeck()
+	{
+		LRESULT res = SendMessage(_padd_check,BM_GETCHECK,(WPARAM)0,(LPARAM)0);
+
+		if(res == BST_CHECKED)
+		{
+			EnableWindow(_padd_edit,TRUE);
+			SetWindowText(_padd_edit,"2.75");
+		}
+		else
+		{
+			EnableWindow(_padd_edit,FALSE);
+			SetWindowText(_padd_edit,"");
+		}
+
+	}
+	
+	void process_ripout_ckeck()
+	{
+		LRESULT res = SendMessage(_ripout_check,BM_GETCHECK,(WPARAM)0,(LPARAM)0);
+
+		if(res == BST_CHECKED)
+		{
+			EnableWindow(_ripout_edit,TRUE);
+			SetWindowText(_ripout_edit,"1.00");
+		}
+		else
+		{
+			EnableWindow(_ripout_edit,FALSE);
+			SetWindowText(_ripout_edit,"");
+		}
+
 	}
 
 	void process_wheel(WORD w)
@@ -1528,7 +1688,7 @@ class MeasureWin
 
 		GetClientRect(_measure_display_wnd,&measure_display_rect);
 
-		int bottom = measure_display_rect.bottom - 300;
+		int bottom = measure_display_rect.bottom - 244;
 
 		MoveWindow(_measurements_edit,10,20,120,bottom,TRUE);
 		MoveWindow(_standard_edit,135, 20, 120,bottom,TRUE);
@@ -1536,7 +1696,7 @@ class MeasureWin
 
 		bottom += 25;
 
-		MoveWindow(_measure_displayTotals_wnd,0,bottom,c_control_rect.right,250,TRUE);
+		MoveWindow(_measure_displayTotals_wnd,0,bottom,c_control_rect.right,220,TRUE);
 
 	}
 
@@ -1603,6 +1763,8 @@ class MeasureWin
 		update_tscn_display();
 		update_square_footage_display();
 		update_square_yardage_display();
+		update_waist_footage_display();
+		update_waist_yardage_display();
 	}
 
 	void update_measurment_display()
@@ -1734,7 +1896,63 @@ class MeasureWin
 		else
 			SetWindowText(_ts_cn_edit,"");
 	}
+	
+	void update_waist_footage_display()
+	{
+		if(_standard.size() > 0 || _needs.size() > 0)
+		{
+			TCHAR buff[30];
+			Measurment ms = get_total_standard_length();
+			Measurment mn = get_calculated_needs_length();
 
+			int used_sqft = get_standard_sqft();
+			int needs_sqft = get_needs_sqft();
+
+			Measurment total;
+
+			total._w_f = 12;
+
+			total.add_length(ms);
+			total.add_length(mn);
+
+			int waist = total.get_square_footage() - (used_sqft + needs_sqft);
+
+			sprintf_s(buff,"%d", waist);
+
+			SetWindowText(_square_foot_waist_edit,buff);
+		}
+		else
+			SetWindowText(_square_foot_waist_edit,"");
+	}
+	
+	void update_waist_yardage_display()
+	{
+		if(_standard.size() > 0 || _needs.size() > 0)
+		{
+			TCHAR buff[30];
+			Measurment ms = get_total_standard_length();
+			Measurment mn = get_calculated_needs_length();
+
+			int used_sqft = get_standard_sqft();
+			int needs_sqft = get_needs_sqft();
+
+			Measurment total;
+
+			total._w_f = 12;
+
+			total.add_length(ms);
+			total.add_length(mn);
+
+			int waist = (total.get_square_footage() - (used_sqft + needs_sqft))/9;
+
+			sprintf_s(buff,"%d", waist);
+
+			SetWindowText(_square_yard_waist_edit,buff);
+		}
+		else
+			SetWindowText(_square_yard_waist_edit,"");
+	}
+	
 	bool validate_input()
 	{
 		TCHAR buff[30];
