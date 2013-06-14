@@ -304,6 +304,8 @@ class MeasureWin
 	HWND _install_check;
 	HWND _ripout_check;
 
+	HWND last_updated_edit;
+
 
 	vector<Measurment> _measurments;
 	vector<Measurment> _standard;
@@ -1377,6 +1379,12 @@ class MeasureWin
 	
 	void process_fee_filds_keystroke(LPARAM lParam)
 	{
+		if((HWND)lParam == last_updated_edit)
+		{
+			last_updated_edit = NULL;
+			return;
+		}
+
 		if((HWND)lParam == _cost_edit || 
 			(HWND)lParam == _steps_edit || 
 			(HWND)lParam == _padd_edit || 
@@ -1399,6 +1407,7 @@ class MeasureWin
 					break;
 				}
 			}
+			last_updated_edit = (HWND)lParam;
 			SetWindowText((HWND)lParam,text);
 			SendMessage((HWND)lParam,EM_SETSEL,(WPARAM)size,(LPARAM)size);
 
@@ -1494,7 +1503,7 @@ class MeasureWin
 
 	void process_left_mouse_up()
 	{
-		Measurment *pm = &_accounted[motion_part-1];
+		//Measurment *pm = &_accounted[motion_part-1];
 
 		//work on snap
 		/*
@@ -2067,7 +2076,7 @@ class MeasureWin
 			return;
 		}
 
-		int val = ceil((count/3.0f)*2.0f);
+		int val = (int)ceil((count/3.0f)*2.0f);
 
 		while(true)
 		{
