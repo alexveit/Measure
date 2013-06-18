@@ -4,6 +4,7 @@
 #include <gl\glu.h>
 #include <algorithm>
 #include <sstream>
+#include <fstream>
 
 using namespace std;
 
@@ -758,6 +759,30 @@ class MeasureWin
 
 	}
 
+	//NEED WORK
+	void create_html_document()
+	{
+		ofstream myfile;
+		char buff[50];
+		myfile.open ("example.html");
+		
+		myfile << "<html><body>";
+
+		myfile << "<ul><li><b>Measurements</b></li><ul>";
+		for(unsigned i = 0; i < _measurments.size(); i++)
+		{
+			_measurments[i].get_string(buff,50);
+			myfile << "<li>" << buff << "</li>";
+		}
+		myfile << "</ul></ul>";
+
+
+
+		myfile << "</body></html>";
+
+		myfile.close();
+	}
+
 	void create_MeasurmentDisplay(HWND meas_wnd)
 	{
 		CreateWindow("STATIC", "Measurments",WS_VISIBLE | WS_CHILD,
@@ -798,10 +823,10 @@ class MeasureWin
 	void create_MeasurmentDisplayTotals(HWND meas_total_wnd)
 	{
 
-		CreateWindow("STATIC", "Totals\r\nStandards",WS_VISIBLE | WS_CHILD,
+		CreateWindow("STATIC", "TotalsStandards",WS_VISIBLE | WS_CHILD,
                       135, 0, 100, 38, meas_total_wnd,NULL, _hInstance, NULL);
 
-		CreateWindow("STATIC", "Calculated\r\nNeeds",WS_VISIBLE | WS_CHILD,
+		CreateWindow("STATIC", "CalculatedNeeds",WS_VISIBLE | WS_CHILD,
                       260, 0, 100, 38,meas_total_wnd,NULL, _hInstance, NULL);
 
 		_standard_total_edit = CreateWindow("EDIT", "",
@@ -1359,7 +1384,8 @@ class MeasureWin
 		}
 		else if((HWND)lParam == _clear_button)
 		{
-			clear_all();
+			//clear_all();
+			create_html_document();
 		}
 		else if((HWND)lParam == _padd_check)
 		{
@@ -1963,7 +1989,7 @@ class MeasureWin
 			{
 				_measurments[i].get_string(buff,50);
 				str.append(buff);
-				str.append("\r\n");
+				str.append("");
 			}
 
 			_measurments.back().get_string(buff,50);
@@ -1985,7 +2011,7 @@ class MeasureWin
 			{
 				_needs[i].get_string(buff,50);
 				str.append(buff);
-				str.append("\r\n");
+				str.append("");
 			}
 
 			_needs.back().get_string(buff,50);
@@ -2041,7 +2067,7 @@ class MeasureWin
 			{
 				_standard[i].get_string(buff,500);
 				str.append(buff);
-				str.append("\r\n");
+				str.append("");
 			}
 
 			if(_steps._w_f > 0)
