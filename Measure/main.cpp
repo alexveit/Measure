@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <sstream>
 #include <fstream>
+#include <shlobj.h>
 
 using namespace std;
 
@@ -287,8 +288,8 @@ class MeasureWin
 	HWND _ts_cn_edit;
 	HWND _square_foot_edit;
 	HWND _square_yard_edit;
-	HWND _square_foot_waist_edit;
-	HWND _square_yard_waist_edit;
+	HWND _square_foot_waste_edit;
+	HWND _square_yard_waste_edit;
 	HWND _with_edit;
 	HWND _total_cost_edit;
 	HWND _steps_edit;
@@ -301,6 +302,7 @@ class MeasureWin
 	HWND _add_button;
 	HWND _invert_button;
 	HWND _clear_button;
+	HWND _export_button;
 	HWND _padd_check;
 	HWND _install_check;
 	HWND _ripout_check;
@@ -764,9 +766,26 @@ class MeasureWin
 	{
 		ofstream myfile;
 		char buff[50];
-		myfile.open ("example.html");
+		TCHAR appData[256];
+		sprintf_s(appData,"example.html");
+		if (SUCCEEDED(SHGetFolderPath(NULL,CSIDL_DESKTOPDIRECTORY | CSIDL_FLAG_CREATE, 
+			NULL, SHGFP_TYPE_CURRENT, appData))) 
+		{
+			sprintf_s(appData,"%s\\example.html",appData);
+		}
+
+		myfile.open (appData);
 		
 		myfile << "<html><body>";
+
+		int totalsqft = 0;
+		int totalsqyd = 0;
+
+		TCHAR ft[30], yd[30], tr[30];
+
+		get_total_square_footage_string(ft,30);
+		get_total_square_yardage_string(yd,30);
+		get_total_roll_string(tr,30);
 
 		myfile << "<ul><li><b>Measurements</b></li><ul>";
 		for(unsigned i = 0; i < _measurments.size(); i++)
@@ -776,7 +795,17 @@ class MeasureWin
 		}
 		myfile << "</ul></ul>";
 
+		myfile << "<p><b>Total Roll:</b> " << tr << "</p>";
 
+		myfile << "<table style='border-style:solid; border-width:1px;'><tr><td colspan='3'><b>Area</b></td></tr>";
+
+		myfile << "<tr><td><br></td><td>Sq ft</td><td>Sq yd</td></tr>";
+
+		myfile << "<tr><td><b>Total</b></td><td>" << ft << "</td><td>" << yd << "</td></tr>";
+
+		myfile << "<tr><td><b>Waste</b></td><td>" << get_waste_footage_int() << "</td><td>" << get_waste_yardage_int() << "</td></tr>";
+
+		myfile << "</table>";
 
 		myfile << "</body></html>";
 
@@ -823,10 +852,13 @@ class MeasureWin
 	void create_MeasurmentDisplayTotals(HWND meas_total_wnd)
 	{
 
-		CreateWindow("STATIC", "TotalsStandards",WS_VISIBLE | WS_CHILD,
+		_export_button = CreateWindow("BUTTON", "Export",WS_VISIBLE | WS_CHILD,
+			10, 10, 90, 35,meas_total_wnd,NULL, _hInstance, NULL);
+
+		CreateWindow("STATIC", "Total Standards",WS_VISIBLE | WS_CHILD,
                       135, 0, 100, 38, meas_total_wnd,NULL, _hInstance, NULL);
 
-		CreateWindow("STATIC", "CalculatedNeeds",WS_VISIBLE | WS_CHILD,
+		CreateWindow("STATIC", "Calculated Needs",WS_VISIBLE | WS_CHILD,
                       260, 0, 100, 38,meas_total_wnd,NULL, _hInstance, NULL);
 
 		_standard_total_edit = CreateWindow("EDIT", "",
@@ -872,14 +904,14 @@ class MeasureWin
 
 		int buff = 30;
 
-		CreateWindow("STATIC", "Waist",WS_VISIBLE | WS_CHILD,
+		CreateWindow("STATIC", "Waste",WS_VISIBLE | WS_CHILD,
                       15, 150+buff, 50, 20, meas_total_wnd,NULL, _hInstance, NULL);
 
-		_square_foot_waist_edit = CreateWindow("EDIT", "",
+		_square_foot_waste_edit = CreateWindow("EDIT", "",
                       WS_VISIBLE | WS_CHILD | ES_READONLY | ES_LEFT,
 					  65, 150+buff, 60, 20, meas_total_wnd,NULL, _hInstance, NULL);
 
-		_square_yard_waist_edit = CreateWindow("EDIT", "",
+		_square_yard_waste_edit = CreateWindow("EDIT", "",
                       WS_VISIBLE | WS_CHILD | ES_READONLY | ES_LEFT,
 					  130, 150+buff, 60, 20, meas_total_wnd,NULL, _hInstance, NULL);
 
@@ -908,8 +940,8 @@ class MeasureWin
 		SendMessage(_total_cost_edit,WM_SETFONT,(WPARAM)hFont,0);
 		SendMessage(_square_foot_edit,WM_SETFONT,(WPARAM)hFont,0);
 		SendMessage(_square_yard_edit,WM_SETFONT,(WPARAM)hFont,0);
-		SendMessage(_square_foot_waist_edit,WM_SETFONT,(WPARAM)hFont,0);
-		SendMessage(_square_yard_waist_edit,WM_SETFONT,(WPARAM)hFont,0);
+		SendMessage(_square_foot_waste_edit,WM_SETFONT,(WPARAM)hFont,0);
+		SendMessage(_square_yard_waste_edit,WM_SETFONT,(WPARAM)hFont,0);
 		SendMessage(_standard_total_edit,WM_SETFONT,(WPARAM)hFont,0);
 		SendMessage(_calculated_needs_edit,WM_SETFONT,(WPARAM)hFont,0);
 		SendMessage(_ts_cn_edit,WM_SETFONT,(WPARAM)hFont,0);
@@ -1094,6 +1126,13 @@ class MeasureWin
 
 		glPopMatrix();
 	}
+	
+	void get_additions_check(bool *pad,bool *install,bool *rip)
+	{
+		*pad = SendMessage(_padd_check,BM_GETCHECK,(WPARAM)0,(LPARAM)0) == BST_CHECKED;
+		*install = SendMessage(_install_check,BM_GETCHECK,(WPARAM)0,(LPARAM)0) == BST_CHECKED;
+		*rip = SendMessage(_ripout_check,BM_GETCHECK,(WPARAM)0,(LPARAM)0) == BST_CHECKED;
+	}
 
 	float get_biggest_y_from_accounted()
 	{
@@ -1147,6 +1186,122 @@ class MeasureWin
 		
 		return (z_dist*-1)/gl_rect.bottom;
 
+	}
+
+	int get_needs_sqft()
+	{
+		int sqft = 0;
+		for(unsigned i = 0; i < _needs.size(); i++)
+		{
+			sqft += _needs[i].get_square_footage();
+		}
+		return sqft;
+	}
+
+	int get_standard_sqft()
+	{
+		int sqft = 0;
+		for(unsigned i = 0; i < _standard.size(); i++)
+		{
+			sqft += _standard[i].get_square_footage();
+		}
+		sqft += _steps.get_square_footage();
+		return sqft;
+	}
+	
+	void get_total_roll_string(TCHAR *buff, int size)
+	{
+		if(_standard.size() > 0 || _needs.size() > 0)
+		{
+			Measurment m = get_total_standard_length();
+			m.add_length(get_calculated_needs_length());
+			m._w_f = 12;
+			m.get_string(buff,size);
+		}
+	}
+
+	void get_total_square_footage_string(TCHAR *buff, int size)
+	{
+		if(_standard.size() > 0 || _needs.size() > 0)
+		{
+			Measurment m = get_total_standard_length();
+			m.add_length(get_calculated_needs_length());
+			m.add_length(_steps);
+			m._w_f = 12;
+		
+			m.get_square_footage_string(buff,size);
+		}
+	}
+
+	void get_total_square_yardage_string(TCHAR *buff, int size)
+	{
+		if(_standard.size() > 0 || _needs.size() > 0)
+		{
+			Measurment m = get_total_standard_length();
+			m.add_length(get_calculated_needs_length());
+			m.add_length(_steps);
+			m._w_f = 12;
+
+			m.get_square_yardage_string(buff,size);
+		}
+	}
+
+	Measurment get_total_standard_length()
+	{
+		Measurment m;
+		for(unsigned i = 0; i < _standard.size(); i++)
+		{
+			m.add_length(_standard[i]);
+		}
+		return m;
+	}
+	
+	int get_waste_footage_int()
+	{
+		if(_standard.size() > 0 || _needs.size() > 0)
+		{
+			Measurment ms = get_total_standard_length();
+			ms.add_length(_steps);
+			Measurment mn = get_calculated_needs_length();
+
+			int used_sqft = get_standard_sqft();
+			int needs_sqft = get_needs_sqft();
+
+			Measurment total;
+
+			total._w_f = 12;
+
+			total.add_length(ms);
+			total.add_length(mn);
+
+			return total.get_square_footage() - (used_sqft + needs_sqft);
+		}
+
+		return 0;
+	}
+	
+	int get_waste_yardage_int()
+	{
+		if(_standard.size() > 0 || _needs.size() > 0)
+		{
+			Measurment ms = get_total_standard_length();
+			ms.add_length(_steps);
+			Measurment mn = get_calculated_needs_length();
+
+			int used_sqft = get_standard_sqft();
+			int needs_sqft = get_needs_sqft();
+
+			Measurment total;
+
+			total._w_f = 12;
+
+			total.add_length(ms);
+			total.add_length(mn);
+
+			return (total.get_square_footage() - (used_sqft + needs_sqft))/9;
+		}
+
+		return 0;
 	}
 
 	void gl_print(const char *fmt, ...)					// Custom GL "Print" Routine
@@ -1231,44 +1386,6 @@ class MeasureWin
 		glMatrixMode(GL_MODELVIEW);
 	}
 	
-	void get_additions_check(bool *pad,bool *install,bool *rip)
-	{
-		*pad = SendMessage(_padd_check,BM_GETCHECK,(WPARAM)0,(LPARAM)0) == BST_CHECKED;
-		*install = SendMessage(_install_check,BM_GETCHECK,(WPARAM)0,(LPARAM)0) == BST_CHECKED;
-		*rip = SendMessage(_ripout_check,BM_GETCHECK,(WPARAM)0,(LPARAM)0) == BST_CHECKED;
-	}
-
-	int get_needs_sqft()
-	{
-		int sqft = 0;
-		for(unsigned i = 0; i < _needs.size(); i++)
-		{
-			sqft += _needs[i].get_square_footage();
-		}
-		return sqft;
-	}
-
-	int get_standard_sqft()
-	{
-		int sqft = 0;
-		for(unsigned i = 0; i < _standard.size(); i++)
-		{
-			sqft += _standard[i].get_square_footage();
-		}
-		sqft += _steps.get_square_footage();
-		return sqft;
-	}
-
-	Measurment get_total_standard_length()
-	{
-		Measurment m;
-		for(unsigned i = 0; i < _standard.size(); i++)
-		{
-			m.add_length(_standard[i]);
-		}
-		return m;
-	}
-
 	void init_gl()							// All Setup For OpenGL Goes Here
 	{
 		glShadeModel(GL_SMOOTH);							// Enable Smooth Shading
@@ -1384,7 +1501,11 @@ class MeasureWin
 		}
 		else if((HWND)lParam == _clear_button)
 		{
-			//clear_all();
+			clear_all();
+			
+		}
+		else if((HWND)lParam == _export_button)
+		{
 			create_html_document();
 		}
 		else if((HWND)lParam == _padd_check)
@@ -1971,11 +2092,11 @@ class MeasureWin
 	void update_display_dynamic()
 	{
 		update_calculated_needs_display();
-		update_tscn_display();
+		update_total_roll_display();
 		update_square_footage_display();
 		update_square_yardage_display();
-		update_waist_footage_display();
-		update_waist_yardage_display();
+		update_waste_footage_display();
+		update_waste_yardage_display();
 		update_cost_display();
 	}
 
@@ -1989,7 +2110,7 @@ class MeasureWin
 			{
 				_measurments[i].get_string(buff,50);
 				str.append(buff);
-				str.append("");
+				str.append("\r\n");
 			}
 
 			_measurments.back().get_string(buff,50);
@@ -2011,7 +2132,7 @@ class MeasureWin
 			{
 				_needs[i].get_string(buff,50);
 				str.append(buff);
-				str.append("");
+				str.append("\r\n");
 			}
 
 			_needs.back().get_string(buff,50);
@@ -2027,13 +2148,8 @@ class MeasureWin
 	{
 		if(_standard.size() > 0 || _needs.size() > 0)
 		{
-			Measurment m = get_total_standard_length();
-			m.add_length(get_calculated_needs_length());
-			m.add_length(_steps);
-			m._w_f = 12;
 			TCHAR buff[30];
-			m.get_square_footage_string(buff,30);
-
+			get_total_square_footage_string(buff,30);
 			SetWindowText(_square_foot_edit,buff);
 		}
 		else
@@ -2044,13 +2160,8 @@ class MeasureWin
 	{
 		if(_standard.size() > 0 || _needs.size() > 0)
 		{
-			Measurment m = get_total_standard_length();
-			m.add_length(get_calculated_needs_length());
-			m.add_length(_steps);
-			m._w_f = 12;
 			TCHAR buff[30];
-			m.get_square_yardage_string(buff,30);
-
+			get_total_square_yardage_string(buff,30);
 			SetWindowText(_square_yard_edit,buff);
 		}
 		else
@@ -2067,7 +2178,7 @@ class MeasureWin
 			{
 				_standard[i].get_string(buff,500);
 				str.append(buff);
-				str.append("");
+				str.append("\r\n");
 			}
 
 			if(_steps._w_f > 0)
@@ -2134,77 +2245,40 @@ class MeasureWin
 			SetWindowText(_standard_total_edit,"");
 	}
 
-	void update_tscn_display()
+	void update_total_roll_display()
 	{
 		if(_standard.size() > 0 || _needs.size() > 0)
 		{
-			Measurment m = get_total_standard_length();
-			m.add_length(get_calculated_needs_length());
-			m._w_f = 12;
 			TCHAR buff[30];
-			m.get_string(buff,30);
+			get_total_roll_string(buff,30);
 			SetWindowText(_ts_cn_edit,buff);
 		}
 		else
 			SetWindowText(_ts_cn_edit,"");
 	}
 	
-	void update_waist_footage_display()
+	void update_waste_footage_display()
 	{
 		if(_standard.size() > 0 || _needs.size() > 0)
 		{
 			TCHAR buff[30];
-			Measurment ms = get_total_standard_length();
-			ms.add_length(_steps);
-			Measurment mn = get_calculated_needs_length();
-
-			int used_sqft = get_standard_sqft();
-			int needs_sqft = get_needs_sqft();
-
-			Measurment total;
-
-			total._w_f = 12;
-
-			total.add_length(ms);
-			total.add_length(mn);
-
-			int waist = total.get_square_footage() - (used_sqft + needs_sqft);
-
-			sprintf_s(buff,"%d", waist);
-
-			SetWindowText(_square_foot_waist_edit,buff);
+			sprintf_s(buff,"%d", get_waste_footage_int());
+			SetWindowText(_square_foot_waste_edit,buff);
 		}
 		else
-			SetWindowText(_square_foot_waist_edit,"");
+			SetWindowText(_square_foot_waste_edit,"");
 	}
 	
-	void update_waist_yardage_display()
+	void update_waste_yardage_display()
 	{
 		if(_standard.size() > 0 || _needs.size() > 0)
 		{
 			TCHAR buff[30];
-			Measurment ms = get_total_standard_length();
-			ms.add_length(_steps);
-			Measurment mn = get_calculated_needs_length();
-
-			int used_sqft = get_standard_sqft();
-			int needs_sqft = get_needs_sqft();
-
-			Measurment total;
-
-			total._w_f = 12;
-
-			total.add_length(ms);
-			total.add_length(mn);
-
-			int waist = (total.get_square_footage() - (used_sqft + needs_sqft))/9;
-
-			sprintf_s(buff,"%d", waist);
-
-			SetWindowText(_square_yard_waist_edit,buff);
+			sprintf_s(buff,"%d", get_waste_yardage_int());
+			SetWindowText(_square_yard_waste_edit,buff);
 		}
 		else
-			SetWindowText(_square_yard_waist_edit,"");
+			SetWindowText(_square_yard_waste_edit,"");
 	}
 	
 	bool validate_input()
